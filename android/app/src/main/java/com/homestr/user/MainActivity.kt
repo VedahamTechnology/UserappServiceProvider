@@ -1,4 +1,4 @@
-package com.homestr_provider
+package com.homestr.user
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
