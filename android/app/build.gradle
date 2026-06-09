@@ -85,6 +85,15 @@ android {
         versionCode 1
         versionName "1.0"
     }
+    splits {
+        abi {
+            enable true
+            reset()
+            include "arm64-v8a"
+            universalApk false
+        }
+    }
+    // to make build fast and only build arm64-v8a apk, you can also specify abiFilters in defaultConfig.ndk. However, using splits is recommended since it generates separate apk for each architecture and you can upload all of them to Play Store.
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
