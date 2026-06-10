@@ -23,7 +23,7 @@ export default function LoginScreen({ navigation }: any) {
 
     setLoading(true);
     try {
-      const response = await login({ email, password });
+      const response = await login({ email, password, role: "customer" });
       console.log("Login Success:", response);
       Alert.alert("Success", "Logged in successfully!");
       // Navigate to Home/Dashboard when available
@@ -38,7 +38,7 @@ export default function LoginScreen({ navigation }: any) {
     <SafeAreaView className="flex-1 bg-white p-6">
       <View className="mt-10">
         <Text className="text-3xl font-bold text-gray-800">Welcome Back</Text>
-        <Text className="text-gray-500 mt-2">Login to your account</Text>
+        <Text className="text-gray-500 mt-2">Login to your accounts</Text>
       </View>
 
       <View className="mt-10">
