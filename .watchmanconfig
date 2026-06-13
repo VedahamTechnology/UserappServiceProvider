@@ -1,3 +1,0 @@
-{
-  "ignore_dirs": ["android", "ios", "node_modules/react-native-worklets/android"]
-}
