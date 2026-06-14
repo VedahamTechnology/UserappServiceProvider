@@ -39,7 +39,7 @@ const Input = ({
           onFocus={onFocus}
           onBlur={onBlur}
           placeholderTextColor={isFocused ? '#FF8383' : '#9CA3AF'}
-          className="flex-1 ml-3 text-lg"
+          className="flex-1 ml-3 text-lg dark:text-white"
           {...props}
         />
 

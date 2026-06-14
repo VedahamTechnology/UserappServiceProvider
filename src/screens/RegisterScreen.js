@@ -67,7 +67,7 @@ export default function RegisterScreen({ navigation }) {
 
     return (
         <KeyboardAvoidingView
-            className="flex-1 bg-white"
+            className="flex-1 bg-white dark:bg-slate-900"
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
             <ScrollView
@@ -80,8 +80,8 @@ export default function RegisterScreen({ navigation }) {
                     resizeMode="cover"
                 />
 
-                <View className="-translate-y-12 px-6" style={{ transform: [{ translateY: -250 }] }}>
-                    <Text className="font-bold text-4xl mb-8">Register</Text>
+                <View className="-translate-y-12 px-6" style={{ transform: [{ translateY: -200 }] }}>
+                    <Text className="font-bold text-4xl mb-8 dark:text-white">Register</Text>
 
                     <View className="flex-row justify-between">
                         <View className="w-[48%]">
@@ -172,7 +172,7 @@ export default function RegisterScreen({ navigation }) {
                     />
 
                     <View className="flex-row justify-center mt-8 pb-10">
-                        <Text className="text-gray-500">Already have an account? </Text>
+                        <Text className="text-gray-500 dark:text-gray-400">Already have an account? </Text>
                         <TouchableOpacity onPress={() => navigation.navigate('Login')}>
                             <Text className="text-primaryPink font-bold">Login</Text>
                         </TouchableOpacity>
