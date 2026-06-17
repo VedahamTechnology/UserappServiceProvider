@@ -8,17 +8,15 @@ import {
     ScrollView,
     TouchableOpacity,
 } from 'react-native';
-import { register } from '../services/authService';
+import { login } from '../services/authService';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Checkbox from 'expo-checkbox';
 
 export default function LoginScreen({ navigation }) {
     const [formData, setFormData] = useState({
-        name: '',
         email: '',
         password: '',
-        confirmPassword: '',
     });
     const [focusedField, setFocusedField] = useState(null);
     const [showPassword, setShowPassword] = useState(false);
@@ -31,8 +29,8 @@ export default function LoginScreen({ navigation }) {
     };
 
     const validate = () => {
-        const { firstName, lastName, phone, email, password, confirmPassword } = formData;
-        if (!firstName || !lastName || !phone || !email || !password || !confirmPassword) {
+        const { email, password } = formData;
+        if (!email || !password) {
             setError('All fields are required');
             return false;
         }
@@ -45,23 +43,24 @@ export default function LoginScreen({ navigation }) {
             setError('Password must be at least 6 characters');
             return false;
         }
-        if (password !== confirmPassword) {
-            setError('Passwords do not match');
-            return false;
-        }
         return true;
     };
 
-    const handleRegister = async () => {
-        // if (!validate()) return;
+    const handleLogin = async () => {
+        if (!validate()) return;
 
         try {
             setLoading(true);
             setError('');
-            // await register({ ...formData });
-            navigation.replace('Main');
+            const response = await login(formData.email, formData.password);
+            if (response.success) {
+                // You might want to save the token here
+                navigation.replace('Main');
+            } else {
+                setError(response.message || 'Login failed');
+            }
         } catch (err) {
-            setError(err.message);
+            setError(err.message || 'An unexpected error occurred');
         } finally {
             setLoading(false);
         }
@@ -135,7 +134,7 @@ export default function LoginScreen({ navigation }) {
 
                     <Button
                         title="Login"
-                        onPress={handleRegister}
+                        onPress={handleLogin}
                         loading={loading}
                     />
 

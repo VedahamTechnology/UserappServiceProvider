@@ -14,10 +14,13 @@ import Input from '../components/common/Input';
 
 export default function RegisterScreen({ navigation }) {
     const [formData, setFormData] = useState({
-        name: '',
+        firstName: '',
+        lastName: '',
         email: '',
+        phone: '',
         password: '',
         confirmPassword: '',
+        gender: 'male', // default gender
     });
     const [focusedField, setFocusedField] = useState(null);
     const [showPassword, setShowPassword] = useState(false);
@@ -31,7 +34,7 @@ export default function RegisterScreen({ navigation }) {
     const validate = () => {
         const { firstName, lastName, phone, email, password, confirmPassword } = formData;
         if (!firstName || !lastName || !phone || !email || !password || !confirmPassword) {
-            setError('All fields are required');
+            setError('Please provide all required fields');
             return false;
         }
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -51,15 +54,20 @@ export default function RegisterScreen({ navigation }) {
     };
 
     const handleRegister = async () => {
-        // if (!validate()) return;
+        if (!validate()) return;
 
         try {
             setLoading(true);
             setError('');
-            // await register({ ...formData });
-            navigation.replace('Main');
+            const { confirmPassword, ...registerData } = formData;
+            const response = await register(registerData);
+            if (response.success) {
+                navigation.replace('Main');
+            } else {
+                setError(response.message || 'Registration failed');
+            }
         } catch (err) {
-            setError(err.message);
+            setError(err.message || 'An unexpected error occurred');
         } finally {
             setLoading(false);
         }
@@ -134,6 +142,28 @@ export default function RegisterScreen({ navigation }) {
                         keyboardType="email-address"
                         autoCapitalize="none"
                     />
+
+                    <View className="mb-6">
+                        <Text className="text-gray-500 dark:text-gray-400 mb-3 ml-1 font-medium">Gender</Text>
+                        <View className="flex-row justify-between">
+                            {['male', 'female', 'other'].map((g) => (
+                                <TouchableOpacity
+                                    key={g}
+                                    onPress={() => handleChange('gender', g)}
+                                    className="flex-row items-center space-x-2"
+                                >
+                                    <View className={`w-5 h-5 rounded-full border-2 items-center justify-center ${formData.gender === g ? 'border-primaryPink' : 'border-gray-300 dark:border-slate-600'}`}>
+                                        {formData.gender === g && (
+                                            <View className="w-2.5 h-2.5 rounded-full bg-primaryPink" />
+                                        )}
+                                    </View>
+                                    <Text className={`capitalize ml-2 ${formData.gender === g ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500'}`}>
+                                        {g}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
 
                     <Input
                         value={formData.password}

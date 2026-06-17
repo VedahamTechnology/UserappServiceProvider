@@ -1,12 +1,36 @@
-const BASE_URL = 'http://localhost:5000';
+import { storage } from './storageService';
+
+const BASE_URL = 'https://admin-backend-01pa.onrender.com'; 
+
+const getHeaders = async () => {
+  const token = await storage.getToken();
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+};
 
 export const api = {
+  get: async (endpoint) => {
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
+      method: 'GET',
+      headers: await getHeaders(),
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.message || 'Request failed');
+    }
+    return result;
+  },
+
   post: async (endpoint, data) => {
     const response = await fetch(`${BASE_URL}${endpoint}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: await getHeaders(),
       body: JSON.stringify(data),
     });
 

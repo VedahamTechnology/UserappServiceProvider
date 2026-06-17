@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 
-const MainBookingCard = ({ service, date, status, id, price, provider }) => {
+const MainBookingCard = ({ service, date, status, id, price, provider, navigation }) => {
   const getStatusColor = () => {
     switch(status.toLowerCase()) {
       case 'completed': return 'text-green-500 bg-green-50 dark:bg-green-500/10';
@@ -42,7 +42,7 @@ const MainBookingCard = ({ service, date, status, id, price, provider }) => {
 
       {(status === 'Confirmed' || status === 'Pending') && (
         <View className="flex-row mt-6 space-x-3">
-          <TouchableOpacity className="flex-1 bg-primaryPink/10 py-3 rounded-2xl items-center">
+          <TouchableOpacity className="flex-1 bg-primaryPink/10 py-3 rounded-2xl items-center mx-3">
             <Text className="text-primaryPink font-bold">Reschedule</Text>
           </TouchableOpacity>
           <TouchableOpacity className="flex-1 bg-gray-100 dark:bg-slate-700 py-3 rounded-2xl items-center">
@@ -108,7 +108,7 @@ export default function BookingsScreen({ navigation }) {
       <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false}>
         {filteredBookings.length > 0 ? (
           filteredBookings.map(booking => (
-            <MainBookingCard key={`booking-${booking.id}`} {...booking} />
+            <MainBookingCard key={`booking-${booking.id}`} {...booking} navigation={navigation} />
           ))
         ) : (
           <View className="flex-1 items-center justify-center py-20">

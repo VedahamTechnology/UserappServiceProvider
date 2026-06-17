@@ -1,9 +1,11 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import { View, Text, Image, TouchableOpacity, ScrollView, Switch, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Image, TouchableOpacity, ScrollView, Switch, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useColorScheme } from 'nativewind';
 import * as ImagePicker from 'expo-image-picker';
+import { getCurrentUser, logout } from '../services/authService';
+import { storage } from '../services/storageService';
 
 const ProfileMenuItem = ({ icon, title, onPress, isLast, color = "#FF8383", rightElement }) => (
   <TouchableOpacity
@@ -25,6 +27,31 @@ export default function ProfileScreen({ navigation }) {
   const { colorScheme, toggleColorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
   const [profileImage, setProfileImage] = useState(null);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchUserData();
+  }, []);
+
+  const fetchUserData = async () => {
+    try {
+      setLoading(true);
+      // Try to get from local storage first for immediate display
+      const cachedUser = await storage.getUser();
+      if (cachedUser) setUser(cachedUser);
+
+      // Then fetch fresh data from API
+      const response = await getCurrentUser();
+      if (response.success) {
+        setUser(response.user);
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const pickImage = async () => {
     // Request permissions
@@ -53,10 +80,29 @@ export default function ProfileScreen({ navigation }) {
       "Are you sure you want to logout?",
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Logout", onPress: () => navigation.replace('Login'), style: 'destructive' }
+        { 
+          text: "Logout", 
+          onPress: async () => {
+            try {
+              await logout();
+              navigation.replace('Login');
+            } catch (error) {
+              navigation.replace('Login'); // Redirect anyway
+            }
+          }, 
+          style: 'destructive' 
+        }
       ]
     );
   };
+
+  if (loading && !user) {
+    return (
+      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-slate-900">
+        <ActivityIndicator size="large" color="#FF8383" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -87,8 +133,12 @@ export default function ProfileScreen({ navigation }) {
               </TouchableOpacity>
             </View>
             <View className="ml-4">
-              <Text className="text-2xl font-bold text-white">John Doe</Text>
-              <Text className="text-white/80 text-base">@johndoe</Text>
+              <Text className="text-2xl font-bold text-white">
+                {user ? `${user.firstName} ${user.lastName}` : 'User Name'}
+              </Text>
+              <Text className="text-white/80 text-base">
+                {user ? user.email : '@username'}
+              </Text>
             </View>
           </View>
           <TouchableOpacity 
