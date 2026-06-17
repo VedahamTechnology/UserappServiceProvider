@@ -219,15 +219,15 @@ export default function HomeScreen({ navigation }) {
                   activeOpacity={0.7}
                 >
                   <View className="w-16 h-16 bg-gray-50 dark:bg-slate-800 rounded-2xl items-center justify-center mb-2 border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
-                    {category.image ? (
-                      <Image 
-                        source={{ uri: category.image }} 
-                        className="w-8 h-8"
-                        resizeMode="contain"
-                      />
-                    ) : (
-                      <Ionicons name="apps" size={24} color="#FF8383" />
-                    )}
+                    <Image 
+                      source={{ 
+                        uri: category.image && category.image.startsWith('http') 
+                          ? category.image 
+                          : 'https://cdn-icons-png.flaticon.com/512/10473/10473663.png' // Professional service placeholder
+                      }} 
+                      className="w-8 h-8"
+                      resizeMode="contain"
+                    />
                   </View>
                   <Text 
                     className="text-[11px] font-bold text-gray-700 dark:text-gray-300 text-center"
