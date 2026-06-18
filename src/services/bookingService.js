@@ -16,4 +16,13 @@ export const bookingService = {
       throw error;
     }
   },
+
+  createBooking: async (bookingData) => {
+    try {
+      const response = await api.post('/api/user/bookings', bookingData);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
 };

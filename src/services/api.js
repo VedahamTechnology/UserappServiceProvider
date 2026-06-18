@@ -42,4 +42,31 @@ export const api = {
 
     return result;
   },
+
+  put: async (endpoint, data = {}) => {
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
+      method: 'PUT',
+      headers: await getHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.message || 'Request failed');
+    }
+    return result;
+  },
+
+  delete: async (endpoint) => {
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
+      method: 'DELETE',
+      headers: await getHeaders(),
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.message || 'Request failed');
+    }
+    return result;
+  },
 };

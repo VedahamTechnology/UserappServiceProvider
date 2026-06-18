@@ -27,7 +27,7 @@ const MainBookingCard = ({ service, date, status, id, price, provider, navigatio
   }) : 'N/A';
 
   return (
-    <TouchableOpacity className="bg-white dark:bg-slate-800 rounded-3xl p-5 mb-4 shadow-sm border border-gray-100 dark:border-slate-700">
+    <TouchableOpacity className="bg-white dark:bg-slate-800 rounded-3xl p-5 mb-4    border border-gray-100 dark:border-slate-700">
       <View className="flex-row justify-between items-start">
         <View className="flex-1">
           <Text className="text-xl font-bold text-gray-900 dark:text-white">{service}</Text>
@@ -117,7 +117,7 @@ export default function BookingsScreen({ navigation }) {
   return (
     <SafeAreaView className="flex-1 bg-gray-50 dark:bg-slate-900" edges={['top']}>
       {/* Header */}
-      <View className="bg-white dark:bg-slate-900 shadow-sm">
+      <View className="bg-white dark:bg-slate-900   ">
         <View className="px-4 py-4">
           <Text className="text-3xl font-extrabold text-gray-900 dark:text-white">
             Bookings
@@ -137,7 +137,7 @@ export default function BookingsScreen({ navigation }) {
                 <TouchableOpacity 
                   key={`tab-${tab}`}
                   onPress={() => setActiveTab(tab)}
-                  className={`px-6 py-3 rounded-xl items-center ${activeTab === tab ? 'bg-white dark:bg-slate-700 shadow-sm' : ''}`}
+                  className={`px-6 py-3 rounded-xl items-center ${activeTab === tab ? 'bg-white dark:bg-slate-700   ' : ''}`}
                 >
                   <Text className={`font-bold whitespace-nowrap ${activeTab === tab ? 'text-primaryPink' : 'text-gray-500 dark:text-gray-400'}`}>
                     {tab}

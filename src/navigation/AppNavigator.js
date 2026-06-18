@@ -4,6 +4,11 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import WelcomeScreen from '../screens/WelcomeScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import CategoryListScreen from '../screens/CategoryListScreen';
+import ServiceListScreen from '../screens/ServiceListScreen';
+import ServiceDetailScreen from '../screens/ServiceDetailScreen';
+import NotificationScreen from '../screens/NotificationScreen';
+import CheckoutScreen from '../screens/CheckoutScreen';
 import MainTabNavigator from './MainTabNavigator';
 
 // Profile Screens
@@ -39,6 +44,31 @@ export default function AppNavigator() {
       <Stack.Screen
         name="Main"
         component={MainTabNavigator}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="CategoryList"
+        component={CategoryListScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ServiceList"
+        component={ServiceListScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ServiceDetail"
+        component={ServiceDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Notifications"
+        component={NotificationScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Checkout"
+        component={CheckoutScreen}
         options={{ headerShown: false }}
       />
 

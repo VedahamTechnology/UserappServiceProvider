@@ -15,6 +15,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { categoryService } from '../services/categoryService';
+import { serviceService } from '../services/serviceService';
+import { notificationService } from '../services/notificationService';
 
 const { width } = Dimensions.get('window');
 
@@ -47,6 +49,8 @@ export default function HomeScreen({ navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSlide, setActiveSlide] = useState(0);
   const [categories, setCategories] = useState([]);
+  const [services, setServices] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -56,17 +60,28 @@ export default function HomeScreen({ navigation }) {
     }
   }).current;
 
-  const fetchCategories = useCallback(async (isRefreshing = false) => {
+  const fetchData = useCallback(async (isRefreshing = false) => {
     if (isRefreshing) setRefreshing(true);
     else setLoading(true);
 
     try {
-      const response = await categoryService.getCategories();
-      if (response.success) {
-        setCategories(response.data || []);
+      const [catResponse, servResponse, unreadResponse] = await Promise.all([
+        categoryService.getCategories(),
+        serviceService.getServices({ limit: 6 }),
+        notificationService.getUnreadCount()
+      ]);
+
+      if (catResponse.success) {
+        setCategories(catResponse.data || []);
+      }
+      if (servResponse.success) {
+        setServices(servResponse.data || []);
+      }
+      if (unreadResponse.success) {
+        setUnreadCount(unreadResponse.data?.unreadCount || 0);
       }
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -74,12 +89,12 @@ export default function HomeScreen({ navigation }) {
   }, []);
 
   useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
+    fetchData();
+  }, [fetchData]);
 
   const onRefresh = useCallback(() => {
-    fetchCategories(true);
-  }, [fetchCategories]);
+    fetchData(true);
+  }, [fetchData]);
 
   const renderSliderItem = ({ item }) => (
     <View style={{ width: width - 32 }} className="mr-4">
@@ -117,8 +132,16 @@ export default function HomeScreen({ navigation }) {
         <Text className="text-2xl font-black text-primaryPink tracking-tighter">
           HomeStr
         </Text>
-        <TouchableOpacity className="p-2 bg-gray-50 dark:bg-slate-800 rounded-full">
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('Notifications')}
+          className="p-2 bg-gray-50 dark:bg-slate-800 rounded-full relative"
+        >
           <Feather name="bell" size={20} color="#6B7280" />
+          {unreadCount > 0 && (
+            <View className="absolute top-1.5 right-1.5 w-4 h-4 bg-primaryPink rounded-full items-center justify-center border-2 border-white">
+              <Text className="text-[8px] text-white font-black">{unreadCount > 9 ? '9+' : unreadCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -155,6 +178,7 @@ export default function HomeScreen({ navigation }) {
             className="flex-1 ml-3 text-gray-900 dark:text-white font-medium"
             value={searchQuery}
             onChangeText={setSearchQuery}
+            onSubmitEditing={() => navigation.navigate('ServiceList', { searchInitial: searchQuery })}
           />
           <TouchableOpacity className="bg-primaryPink p-2 rounded-xl">
             <Feather name="sliders" size={16} color="white" />
@@ -201,7 +225,7 @@ export default function HomeScreen({ navigation }) {
         <View className="px-4 mt-8">
           <View className="flex-row justify-between items-center mb-6">
             <Text className="text-xl font-black text-gray-900 dark:text-white">Categories</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('CategoryList')}>
               <Text className="text-primaryPink font-bold">See All</Text>
             </TouchableOpacity>
           </View>
@@ -217,6 +241,7 @@ export default function HomeScreen({ navigation }) {
                   key={category._id}
                   className="w-[23%] items-center mb-6"
                   activeOpacity={0.7}
+                  onPress={() => navigation.navigate('ServiceList', { categoryId: category._id, categoryName: category.name })}
                 >
                   <View className="w-16 h-16 bg-gray-50 dark:bg-slate-800 rounded-2xl items-center justify-center mb-2 border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
                     <Image 
@@ -235,6 +260,69 @@ export default function HomeScreen({ navigation }) {
                   >
                     {category.name}
                   </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Popular Services Section */}
+        <View className="px-4 mt-4">
+          <View className="flex-row justify-between items-center mb-6">
+            <Text className="text-xl font-black text-gray-900 dark:text-white">Popular Services</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('ServiceList')}>
+              <Text className="text-primaryPink font-bold">View All</Text>
+            </TouchableOpacity>
+          </View>
+
+          {loading && !refreshing ? (
+            <View className="py-10">
+              <ActivityIndicator size="large" color="#FF8383" />
+            </View>
+          ) : (
+            <View className="space-y-4">
+              {services.map((service) => (
+                <TouchableOpacity 
+                  key={service._id}
+                  className="bg-white dark:bg-slate-800 rounded-3xl p-4 flex-row border border-gray-100 dark:border-slate-700 shadow-sm mb-4"
+                  activeOpacity={0.7}
+                  onPress={() => navigation.navigate('ServiceDetail', { serviceId: service._id })}
+                >
+                  <Image 
+                    source={{ uri: service.image || 'https://via.placeholder.com/150' }} 
+                    className="w-24 h-24 rounded-2xl"
+                  />
+                  <View className="flex-1 ml-4 justify-between py-1">
+                    <View>
+                      <View className="flex-row justify-between items-start">
+                        <Text className="text-[10px] font-black text-primaryPink uppercase tracking-widest mb-1">
+                          {service.category?.name || 'Service'}
+                        </Text>
+                        <View className="flex-row items-center bg-yellow-50 px-2 py-0.5 rounded-lg">
+                          <Ionicons name="star" size={10} color="#F59E0B" />
+                          <Text className="text-[10px] font-black text-yellow-700 ml-1">4.5</Text>
+                        </View>
+                      </View>
+                      <Text className="text-base font-black text-gray-900 dark:text-white" numberOfLines={1}>
+                        {service.name}
+                      </Text>
+                      <Text className="text-xs text-gray-500 dark:text-gray-400 mt-1" numberOfLines={2}>
+                        {service.description}
+                      </Text>
+                    </View>
+                    
+                    <View className="flex-row justify-between items-center mt-2">
+                      <View className="flex-row items-baseline">
+                        <Text className="text-primaryPink font-black text-lg">₹{service.discountedPrice || service.basePrice}</Text>
+                        {service.discountedPrice > 0 && service.discountedPrice < service.basePrice && (
+                          <Text className="text-gray-400 text-[10px] font-bold line-through ml-2">₹{service.basePrice}</Text>
+                        )}
+                      </View>
+                      <View className="bg-primaryPink/10 px-3 py-1.5 rounded-xl">
+                        <Text className="text-primaryPink text-[10px] font-black">Book Now</Text>
+                      </View>
+                    </View>
+                  </View>
                 </TouchableOpacity>
               ))}
             </View>
