@@ -152,9 +152,9 @@ export default function RegisterScreen({ navigation }) {
                                     onPress={() => handleChange('gender', g)}
                                     className="flex-row items-center space-x-2"
                                 >
-                                    <View className={`w-5 h-5 rounded-full border-2 items-center justify-center ${formData.gender === g ? 'border-primaryPink' : 'border-gray-300 dark:border-slate-600'}`}>
+                                    <View className={`w-5 h-5 rounded-full border-2 items-center justify-center ${formData.gender === g ? 'border-primaryColor' : 'border-gray-300 dark:border-slate-600'}`}>
                                         {formData.gender === g && (
-                                            <View className="w-2.5 h-2.5 rounded-full bg-primaryPink" />
+                                            <View className="w-2.5 h-2.5 rounded-full bg-primaryColor" />
                                         )}
                                     </View>
                                     <Text className={`capitalize ml-2 ${formData.gender === g ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-500'}`}>
@@ -204,7 +204,7 @@ export default function RegisterScreen({ navigation }) {
                     <View className="flex-row justify-center mt-8 pb-10">
                         <Text className="text-gray-500 dark:text-gray-400">Already have an account? </Text>
                         <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                            <Text className="text-primaryPink font-bold">Login</Text>
+                            <Text className="text-primaryColor font-bold">Login</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

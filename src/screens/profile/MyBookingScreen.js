@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshCon
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { bookingService } from '../../services/bookingService';
+import { primaryColor } from '../../constants/color';
 
 const BookingCard = ({ service, date, status, id, price }) => {
   const getStatusColor = () => {
@@ -90,7 +91,7 @@ export default function MyBookingScreen({ navigation }) {
     <SafeAreaView className="flex-1 bg-gray-50 dark:bg-slate-900" edges={['top']}>
       <View className="flex-row items-center px-4 py-3 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800">
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Feather name="arrow-left" size={24} color="#FF8383" />
+          <Feather name="arrow-left" size={24} color={primaryColor} />
         </TouchableOpacity>
         <Text className="ml-4 text-xl font-bold dark:text-white">My Bookings</Text>
       </View>
@@ -98,12 +99,12 @@ export default function MyBookingScreen({ navigation }) {
       <ScrollView 
         className="flex-1 p-4"
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#FF8383']} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[primaryColor]} />
         }
       >
         {loading && !refreshing ? (
           <View className="py-20">
-            <ActivityIndicator size="large" color="#FF8383" />
+            <ActivityIndicator size="large" color={primaryColor} />
           </View>
         ) : bookings.length > 0 ? (
           bookings.map(booking => (

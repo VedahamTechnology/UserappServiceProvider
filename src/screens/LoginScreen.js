@@ -12,6 +12,7 @@ import { login } from '../services/authService';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Checkbox from 'expo-checkbox';
+import { primaryColor } from '../constants/color';
 
 export default function LoginScreen({ navigation }) {
     const [formData, setFormData] = useState({
@@ -118,13 +119,13 @@ export default function LoginScreen({ navigation }) {
               <Checkbox
                 value={rememberMe}
                 onValueChange={setRememberMe}
-                color={rememberMe ? '#FF8383' : '#9CA3AF'}
+                color={rememberMe ? primaryColor : '#9CA3AF'}
               />
               <Text className="ml-2 text-gray-500 dark:text-gray-400">Remember me</Text>
             </TouchableOpacity>
 
             <TouchableOpacity>
-              <Text className="text-primaryPink font-medium">Forgot Password?</Text>
+              <Text className="text-primaryColor font-medium">Forgot Password?</Text>
             </TouchableOpacity>
           </View>
 
@@ -141,7 +142,7 @@ export default function LoginScreen({ navigation }) {
                     <View className="flex-row justify-center mt-8 pb-10">
                         <Text className="text-gray-500 dark:text-gray-400">don't have an account? </Text>
                         <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                            <Text className="text-primaryPink font-bold">Register</Text>
+                            <Text className="text-primaryColor font-bold">Register</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

@@ -1,3 +1,5 @@
+export const primaryColor = '#043A75';
+
 export const LightTheme = {
   background: '#FFFFFF',
   surface: '#F8F9FA',
@@ -6,7 +8,7 @@ export const LightTheme = {
   text: '#111827',
   textSecondary: '#6B7280',
   border: '#E5E7EB',
-  primaryPink: '#FF8383'
+  primaryColor: primaryColor
 };
 
 export const DarkTheme = {
@@ -17,5 +19,5 @@ export const DarkTheme = {
   text: '#FFFFFF',
   textSecondary: '#9CA3AF',
   border: '#374151',
-primaryPink: '#FF8383'
+  primaryColor: primaryColor
 };

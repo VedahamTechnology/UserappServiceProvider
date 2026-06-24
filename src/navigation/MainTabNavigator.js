@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from 'nativewind';
+import { primaryColor } from '../constants/color';
 
 import HomeScreen from '../screens/HomeScreen';
 import BookingsScreen from '../screens/BookingsScreen';
@@ -35,7 +36,7 @@ export default function MainTabNavigator() {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#FF8383',
+        tabBarActiveTintColor: primaryColor,
         tabBarInactiveTintColor: isDark ? '#9CA3AF' : 'gray',
         tabBarStyle: {
           backgroundColor: isDark ? '#0f172a' : '#ffffff', // slate-900 or white

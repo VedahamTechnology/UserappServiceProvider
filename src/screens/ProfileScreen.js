@@ -6,8 +6,9 @@ import { useColorScheme } from 'nativewind';
 import * as ImagePicker from 'expo-image-picker';
 import { getCurrentUser, logout } from '../services/authService';
 import { storage } from '../services/storageService';
+import { primaryColor } from '../constants/color';
 
-const ProfileMenuItem = ({ icon, title, onPress, isLast, color = "#FF8383", rightElement }) => (
+const ProfileMenuItem = ({ icon, title, onPress, isLast, color = primaryColor, rightElement }) => (
   <TouchableOpacity
     onPress={onPress}
     disabled={!!rightElement}
@@ -99,7 +100,7 @@ export default function ProfileScreen({ navigation }) {
   if (loading && !user) {
     return (
       <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-slate-900">
-        <ActivityIndicator size="large" color="#FF8383" />
+        <ActivityIndicator size="large" color={primaryColor} />
       </View>
     );
   }
@@ -118,7 +119,7 @@ export default function ProfileScreen({ navigation }) {
         </View>
 
         {/* User Card */}
-        <View className="bg-primaryPink rounded-2xl p-5 mx-4 shadow-lg shadow-primaryPink/30 flex-row items-center justify-between">
+        <View className="bg-primaryColor rounded-2xl p-5 mx-4 shadow-lg shadow-primaryColor/30 flex-row items-center justify-between">
           <View className="flex-row items-center">
             <View className="relative">
               <Image
@@ -129,7 +130,7 @@ export default function ProfileScreen({ navigation }) {
                 onPress={pickImage}
                 className="absolute bottom-0 right-0 bg-white p-1.5 rounded-full shadow-sm"
               >
-                <Feather name="camera" size={14} color="#FF8383" />
+                <Feather name="camera" size={14} color={primaryColor} />
               </TouchableOpacity>
             </View>
             <View className="ml-4">
@@ -164,7 +165,7 @@ export default function ProfileScreen({ navigation }) {
               <Switch
                 value={isDark}
                 onValueChange={toggleColorScheme}
-                trackColor={{ false: '#D1D5DB', true: '#FF8383' }}
+                trackColor={{ false: '#D1D5DB', true: primaryColor }}
                 thumbColor={isDark ? '#FFFFFF' : '#F3F4F6'}
               />
             }

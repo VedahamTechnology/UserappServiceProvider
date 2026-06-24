@@ -2,19 +2,20 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { primaryColor } from '../../constants/color';
 
 const AddressCard = ({ type, address, isSelected, onSelect, onRemove }) => (
   <TouchableOpacity 
     onPress={onSelect}
-    className={`bg-white dark:bg-slate-800 rounded-2xl p-4 mb-4 shadow-sm border-2 ${isSelected ? 'border-primaryPink' : 'border-transparent'}`}
+    className={`bg-white dark:bg-slate-800 rounded-2xl p-4 mb-4 shadow-sm border-2 ${isSelected ? 'border-primaryColor' : 'border-transparent'}`}
   >
     <View className="flex-row items-center justify-between mb-2">
       <View className="flex-row items-center">
-        <Feather name={type === 'Home' ? 'home' : type === 'Work' ? 'briefcase' : 'map-pin'} size={18} color="#FF8383" />
+        <Feather name={type === 'Home' ? 'home' : type === 'Work' ? 'briefcase' : 'map-pin'} size={18} color={primaryColor} />
         <Text className="ml-2 font-bold text-gray-900 dark:text-white">{type}</Text>
         {isSelected && (
-          <View className="ml-3 bg-primaryPink/10 px-2 py-0.5 rounded-md">
-            <Text className="text-primaryPink text-[10px] font-bold uppercase">Selected</Text>
+          <View className="ml-3 bg-primaryColor/10 px-2 py-0.5 rounded-md">
+            <Text className="text-primaryColor text-[10px] font-bold uppercase">Selected</Text>
           </View>
         )}
       </View>
@@ -76,7 +77,7 @@ export default function ManageAddressScreen({ navigation }) {
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800">
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Feather name="arrow-left" size={24} color="#FF8383" />
+          <Feather name="arrow-left" size={24} color={primaryColor} />
         </TouchableOpacity>
         <Text className="ml-4 text-xl font-bold dark:text-white">Manage Addresses</Text>
       </View>
@@ -97,7 +98,7 @@ export default function ManageAddressScreen({ navigation }) {
           onPress={() => setModalVisible(true)}
           className="flex-row items-center justify-center bg-white dark:bg-slate-800 border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-2xl p-5 mt-2"
         >
-          <Feather name="plus-circle" size={20} color="#FF8383" />
+          <Feather name="plus-circle" size={20} color={primaryColor} />
           <Text className="ml-2 font-bold text-gray-700 dark:text-gray-300">Add New Address</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -124,7 +125,7 @@ export default function ManageAddressScreen({ navigation }) {
                 <TouchableOpacity 
                   key={t}
                   onPress={() => setNewType(t)}
-                  className={`px-6 py-2 rounded-full border ${newType === t ? 'bg-primaryPink border-primaryPink' : 'border-gray-200 dark:border-slate-700'}`}
+                  className={`px-6 py-2 rounded-full border ${newType === t ? 'bg-primaryColor border-primaryColor' : 'border-gray-200 dark:border-slate-700'}`}
                 >
                   <Text className={`font-bold ${newType === t ? 'text-white' : 'text-gray-500'}`}>{t}</Text>
                 </TouchableOpacity>
@@ -145,7 +146,7 @@ export default function ManageAddressScreen({ navigation }) {
 
             <TouchableOpacity 
               onPress={handleAddAddress}
-              className="bg-primaryPink py-4 rounded-2xl items-center"
+              className="bg-primaryColor py-4 rounded-2xl items-center"
             >
               <Text className="text-white font-bold text-lg">Save Address</Text>
             </TouchableOpacity>

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { primaryColor } from '../../constants/color';
 
 const DealCard = ({ title, description, code, expiry }) => (
   <View className="bg-white dark:bg-slate-800 rounded-2xl p-4 mb-4 shadow-sm border border-gray-100 dark:border-slate-700">
@@ -10,15 +11,15 @@ const DealCard = ({ title, description, code, expiry }) => (
         <Text className="text-lg font-bold text-gray-900 dark:text-white">{title}</Text>
         <Text className="text-gray-500 dark:text-gray-400 mt-1">{description}</Text>
       </View>
-      <View className="bg-primaryPink/10 px-3 py-1 rounded-full">
-        <Text className="text-primaryPink font-bold text-xs">DEAL</Text>
+      <View className="bg-primaryColor/10 px-3 py-1 rounded-full">
+        <Text className="text-primaryColor font-bold text-xs">DEAL</Text>
       </View>
     </View>
     
     <View className="flex-row items-center justify-between mt-4 pt-4 border-t border-gray-50 dark:border-slate-700">
       <View>
         <Text className="text-xs text-gray-400 dark:text-gray-500 uppercase font-bold tracking-tighter">Use Code</Text>
-        <Text className="text-primaryPink font-bold text-lg tracking-widest">{code}</Text>
+        <Text className="text-primaryColor font-bold text-lg tracking-widest">{code}</Text>
       </View>
       <View className="items-end">
         <Text className="text-xs text-gray-400 dark:text-gray-500 font-bold uppercase tracking-tighter">Expires</Text>
@@ -33,7 +34,7 @@ export default function ScrapDealsScreen({ navigation }) {
     <SafeAreaView className="flex-1 bg-gray-50 dark:bg-slate-900" edges={['top']}>
       <View className="flex-row items-center px-4 py-3 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800">
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Feather name="arrow-left" size={24} color="#FF8383" />
+          <Feather name="arrow-left" size={24} color={primaryColor} />
         </TouchableOpacity>
         <Text className="ml-4 text-xl font-bold dark:text-white">Scrap Deals</Text>
       </View>

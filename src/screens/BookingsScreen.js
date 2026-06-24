@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshCon
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { bookingService } from '../services/bookingService';
+import { primaryColor } from '../constants/color';
 
 const MainBookingCard = ({ service, date, status, id, price, provider, navigation }) => {
   const getStatusColor = () => {
@@ -42,20 +43,20 @@ const MainBookingCard = ({ service, date, status, id, price, provider, navigatio
         <View className="flex-1">
           <Text className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-tighter">Date & Time</Text>
           <View className="flex-row items-center mt-1">
-            <Feather name="calendar" size={14} color="#FF8383" />
+            <Feather name="calendar" size={14} color={primaryColor} />
             <Text className="ml-2 text-gray-700 dark:text-gray-300 font-semibold text-sm">{formattedDate}</Text>
           </View>
         </View>
         <View className="items-end">
           <Text className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-tighter">Amount Paid</Text>
-          <Text className="text-primaryPink font-extrabold text-lg mt-1">₹{price}</Text>
+          <Text className="text-primaryColor font-extrabold text-lg mt-1">₹{price}</Text>
         </View>
       </View>
 
       {(status?.toLowerCase() === 'confirmed' || status?.toLowerCase() === 'pending' || status?.toLowerCase() === 'accepted') && (
         <View className="flex-row mt-6 space-x-3">
-          <TouchableOpacity className="flex-1 bg-primaryPink/10 py-3 rounded-2xl items-center mx-3">
-            <Text className="text-primaryPink font-bold">Reschedule</Text>
+          <TouchableOpacity className="flex-1 bg-primaryColor/10 py-3 rounded-2xl items-center mx-3">
+            <Text className="text-primaryColor font-bold">Reschedule</Text>
           </TouchableOpacity>
           <TouchableOpacity className="flex-1 bg-gray-100 dark:bg-slate-700 py-3 rounded-2xl items-center">
             <Text className="text-gray-600 dark:text-gray-300 font-bold">Cancel</Text>
@@ -139,7 +140,7 @@ export default function BookingsScreen({ navigation }) {
                   onPress={() => setActiveTab(tab)}
                   className={`px-6 py-3 rounded-xl items-center ${activeTab === tab ? 'bg-white dark:bg-slate-700   ' : ''}`}
                 >
-                  <Text className={`font-bold whitespace-nowrap ${activeTab === tab ? 'text-primaryPink' : 'text-gray-500 dark:text-gray-400'}`}>
+                  <Text className={`font-bold whitespace-nowrap ${activeTab === tab ? 'text-primaryColor' : 'text-gray-500 dark:text-gray-400'}`}>
                     {tab}
                   </Text>
                 </TouchableOpacity>
@@ -153,12 +154,12 @@ export default function BookingsScreen({ navigation }) {
         className="flex-1 p-4" 
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#FF8383']} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[primaryColor]} />
         }
       >
         {loading && !refreshing ? (
           <View className="py-20">
-            <ActivityIndicator size="large" color="#FF8383" />
+            <ActivityIndicator size="large" color={primaryColor} />
           </View>
         ) : bookings.length > 0 ? (
           bookings.map(booking => (

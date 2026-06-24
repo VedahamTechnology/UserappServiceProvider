@@ -17,6 +17,7 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import { categoryService } from '../services/categoryService';
 import { serviceService } from '../services/serviceService';
 import { notificationService } from '../services/notificationService';
+import { primaryColor } from '../constants/color';
 
 const { width } = Dimensions.get('window');
 
@@ -25,7 +26,7 @@ const SLIDER_DATA = [
     id: '1',
     title: 'Home Cleaning',
     subtitle: 'Up to 50% Off',
-    color: '#FF8383',
+    color: primaryColor,
     icon: 'home'
   },
   {
@@ -80,6 +81,9 @@ export default function HomeScreen({ navigation }) {
       if (unreadResponse.success) {
         setUnreadCount(unreadResponse.data?.unreadCount || 0);
       }
+      console.log('Categories:', catResponse.data);
+      console.log('Services:', servResponse.data);
+      console.log('Unread Notifications:', unreadResponse.data?.unreadCount);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -129,7 +133,7 @@ export default function HomeScreen({ navigation }) {
       
       {/* Top Header: Brand & Notification */}
       <View className="px-4 py-2 flex-row justify-between items-center">
-        <Text className="text-2xl font-black text-primaryPink tracking-tighter">
+        <Text className="text-2xl font-black text-primaryColor tracking-tighter">
           HomeStr
         </Text>
         <TouchableOpacity 
@@ -138,7 +142,7 @@ export default function HomeScreen({ navigation }) {
         >
           <Feather name="bell" size={20} color="#6B7280" />
           {unreadCount > 0 && (
-            <View className="absolute top-1.5 right-1.5 w-4 h-4 bg-primaryPink rounded-full items-center justify-center border-2 border-white">
+            <View className="absolute top-1.5 right-1.5 w-4 h-4 bg-primaryColor rounded-full items-center justify-center border-2 border-white">
               <Text className="text-[8px] text-white font-black">{unreadCount > 9 ? '9+' : unreadCount}</Text>
             </View>
           )}
@@ -148,8 +152,8 @@ export default function HomeScreen({ navigation }) {
       {/* Location Selector */}
       <View className="px-4 py-2 flex-row items-center justify-between">
         <View className="flex-row items-center flex-1">
-          <View className="bg-primaryPink/10 p-2 rounded-full mr-3">
-            <Ionicons name="location" size={18} color="#FF8383" />
+          <View className="bg-primaryColor/10 p-2 rounded-full mr-3">
+            <Ionicons name="location" size={18} color={primaryColor} />
           </View>
           <View>
             <Text className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-widest">
@@ -164,7 +168,7 @@ export default function HomeScreen({ navigation }) {
           onPress={() => navigation.navigate('ManageAddress')}
           className="px-3 py-1.5 bg-gray-100 dark:bg-slate-800 rounded-lg"
         >
-          <Text className="text-primaryPink text-xs font-bold">Change</Text>
+          <Text className="text-primaryColor text-xs font-bold">Change</Text>
         </TouchableOpacity>
       </View>
 
@@ -180,7 +184,7 @@ export default function HomeScreen({ navigation }) {
             onChangeText={setSearchQuery}
             onSubmitEditing={() => navigation.navigate('ServiceList', { searchInitial: searchQuery })}
           />
-          <TouchableOpacity className="bg-primaryPink p-2 rounded-xl">
+          <TouchableOpacity className="bg-primaryColor p-2 rounded-xl">
             <Feather name="sliders" size={16} color="white" />
           </TouchableOpacity>
         </View>
@@ -190,7 +194,7 @@ export default function HomeScreen({ navigation }) {
         className="flex-1" 
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#FF8383']} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[primaryColor]} />
         }
         contentContainerStyle={{ paddingBottom: 20 }}
       >
@@ -215,7 +219,7 @@ export default function HomeScreen({ navigation }) {
             {SLIDER_DATA.map((_, index) => (
               <View 
                 key={index}
-                className={`h-1.5 rounded-full ${activeSlide === index ? 'w-6 bg-primaryPink' : 'w-2 bg-gray-200 dark:bg-slate-700'}`}
+                className={`h-1.5 rounded-full ${activeSlide === index ? 'w-6 bg-primaryColor' : 'w-2 bg-gray-200 dark:bg-slate-700'}`}
               />
             ))}
           </View>
@@ -226,13 +230,13 @@ export default function HomeScreen({ navigation }) {
           <View className="flex-row justify-between items-center mb-6">
             <Text className="text-xl font-black text-gray-900 dark:text-white">Categories</Text>
             <TouchableOpacity onPress={() => navigation.navigate('CategoryList')}>
-              <Text className="text-primaryPink font-bold">See All</Text>
+              <Text className="text-primaryColor font-bold">See All</Text>
             </TouchableOpacity>
           </View>
           
           {loading && !refreshing ? (
             <View className="py-10">
-              <ActivityIndicator size="large" color="#FF8383" />
+              <ActivityIndicator size="large" color={primaryColor} />
             </View>
           ) : (
             <View className="flex-row flex-wrap justify-between">
@@ -271,13 +275,13 @@ export default function HomeScreen({ navigation }) {
           <View className="flex-row justify-between items-center mb-6">
             <Text className="text-xl font-black text-gray-900 dark:text-white">Popular Services</Text>
             <TouchableOpacity onPress={() => navigation.navigate('ServiceList')}>
-              <Text className="text-primaryPink font-bold">View All</Text>
+              <Text className="text-primaryColor font-bold">View All</Text>
             </TouchableOpacity>
           </View>
 
           {loading && !refreshing ? (
             <View className="py-10">
-              <ActivityIndicator size="large" color="#FF8383" />
+              <ActivityIndicator size="large" color={primaryColor} />
             </View>
           ) : (
             <View className="space-y-4">
@@ -295,7 +299,7 @@ export default function HomeScreen({ navigation }) {
                   <View className="flex-1 ml-4 justify-between py-1">
                     <View>
                       <View className="flex-row justify-between items-start">
-                        <Text className="text-[10px] font-black text-primaryPink uppercase tracking-widest mb-1">
+                        <Text className="text-[10px] font-black text-primaryColor uppercase tracking-widest mb-1">
                           {service.category?.name || 'Service'}
                         </Text>
                         <View className="flex-row items-center bg-yellow-50 px-2 py-0.5 rounded-lg">
@@ -313,13 +317,13 @@ export default function HomeScreen({ navigation }) {
                     
                     <View className="flex-row justify-between items-center mt-2">
                       <View className="flex-row items-baseline">
-                        <Text className="text-primaryPink font-black text-lg">₹{service.discountedPrice || service.basePrice}</Text>
+                        <Text className="text-primaryColor font-black text-lg">₹{service.discountedPrice || service.basePrice}</Text>
                         {service.discountedPrice > 0 && service.discountedPrice < service.basePrice && (
                           <Text className="text-gray-400 text-[10px] font-bold line-through ml-2">₹{service.basePrice}</Text>
                         )}
                       </View>
-                      <View className="bg-primaryPink/10 px-3 py-1.5 rounded-xl">
-                        <Text className="text-primaryPink text-[10px] font-black">Book Now</Text>
+                      <View className="bg-primaryColor/10 px-3 py-1.5 rounded-xl">
+                        <Text className="text-primaryColor text-[10px] font-black">Book Now</Text>
                       </View>
                     </View>
                   </View>

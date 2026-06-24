@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { primaryColor } from '../../constants/color';
 
 const FAQItem = ({ question }) => (
   <TouchableOpacity className="flex-row items-center justify-between py-4 border-b border-gray-100 dark:border-slate-800">
@@ -27,13 +28,13 @@ export default function HelpSupportScreen({ navigation }) {
     <SafeAreaView className="flex-1 bg-gray-50 dark:bg-slate-900" edges={['top']}>
       <View className="flex-row items-center px-4 py-3 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800">
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Feather name="arrow-left" size={24} color="#FF8383" />
+          <Feather name="arrow-left" size={24} color={primaryColor} />
         </TouchableOpacity>
         <Text className="ml-4 text-xl font-bold dark:text-white">Help & Support</Text>
       </View>
 
       <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false}>
-        <View className="bg-primaryPink rounded-3xl p-6 mb-6">
+        <View className="bg-primaryColor rounded-3xl p-6 mb-6">
           <Text className="text-2xl font-bold text-white mb-2">How can we help you?</Text>
           <Text className="text-white/80 text-base mb-4">Search for common issues or contact us directly.</Text>
           <View className="flex-row items-center bg-white rounded-xl px-4 py-3">

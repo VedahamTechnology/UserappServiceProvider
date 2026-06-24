@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { serviceService } from '../services/serviceService';
+import { primaryColor } from '../constants/color';
 
 export default function ServiceListScreen({ route, navigation }) {
   const { categoryId, categoryName, searchInitial } = route.params || {};
@@ -61,7 +62,7 @@ export default function ServiceListScreen({ route, navigation }) {
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800">
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Feather name="arrow-left" size={24} color="#FF8383" />
+          <Feather name="arrow-left" size={24} color={primaryColor} />
         </TouchableOpacity>
         <Text className="ml-4 text-xl font-bold dark:text-white flex-1" numberOfLines={1}>
           {categoryName || 'All Services'}
@@ -85,14 +86,14 @@ export default function ServiceListScreen({ route, navigation }) {
 
       {loading && !refreshing ? (
         <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#FF8383" />
+          <ActivityIndicator size="large" color={primaryColor} />
         </View>
       ) : (
         <ScrollView 
           className="flex-1 px-4"
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => fetchServices(true)} colors={['#FF8383']} />
+            <RefreshControl refreshing={refreshing} onRefresh={() => fetchServices(true)} colors={[primaryColor]} />
           }
         >
           {services.length === 0 ? (
@@ -116,7 +117,7 @@ export default function ServiceListScreen({ route, navigation }) {
                   <View className="flex-1 ml-4 justify-between py-1">
                     <View>
                       <View className="flex-row justify-between items-start">
-                        <Text className="text-[10px] font-black text-primaryPink uppercase tracking-widest mb-1">
+                        <Text className="text-[10px] font-black text-primaryColor uppercase tracking-widest mb-1">
                           {service.category?.name || categoryName || 'Service'}
                         </Text>
                         <View className="flex-row items-center bg-yellow-50 px-2 py-0.5 rounded-lg">
@@ -134,13 +135,13 @@ export default function ServiceListScreen({ route, navigation }) {
                     
                     <View className="flex-row justify-between items-center mt-2">
                       <View className="flex-row items-baseline">
-                        <Text className="text-primaryPink font-black text-lg">₹{service.discountedPrice || service.basePrice}</Text>
+                        <Text className="text-primaryColor font-black text-lg">₹{service.discountedPrice || service.basePrice}</Text>
                         {service.discountedPrice > 0 && service.discountedPrice < service.basePrice && (
                           <Text className="text-gray-400 text-[10px] font-bold line-through ml-2">₹{service.basePrice}</Text>
                         )}
                       </View>
-                      <View className="bg-primaryPink/10 px-3 py-1.5 rounded-xl">
-                        <Text className="text-primaryPink text-[10px] font-black">Book Now</Text>
+                      <View className="bg-primaryColor/10 px-3 py-1.5 rounded-xl">
+                        <Text className="text-primaryColor text-[10px] font-black">Book Now</Text>
                       </View>
                     </View>
                   </View>

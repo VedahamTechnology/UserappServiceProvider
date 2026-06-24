@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { serviceService } from '../services/serviceService';
 import Button from '../components/common/Button';
+import { primaryColor } from '../constants/color';
 
 const { width } = Dimensions.get('window');
 
@@ -42,7 +43,7 @@ export default function ServiceDetailScreen({ route, navigation }) {
   if (loading) {
     return (
       <View className="flex-1 justify-center items-center bg-white dark:bg-slate-900">
-        <ActivityIndicator size="large" color="#FF8383" />
+        <ActivityIndicator size="large" color={primaryColor} />
       </View>
     );
   }
@@ -52,7 +53,7 @@ export default function ServiceDetailScreen({ route, navigation }) {
       <View className="flex-1 justify-center items-center bg-white dark:bg-slate-900">
         <Text className="text-gray-500 font-bold">Service not found</Text>
         <TouchableOpacity onPress={() => navigation.goBack()} className="mt-4">
-          <Text className="text-primaryPink font-bold">Go Back</Text>
+          <Text className="text-primaryColor font-bold">Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -88,7 +89,7 @@ export default function ServiceDetailScreen({ route, navigation }) {
         <View className="flex-1 bg-white dark:bg-slate-900 -mt-10 rounded-t-[40px] px-6 pt-8">
           <View className="flex-row justify-between items-start">
             <View className="flex-1 mr-4">
-              <Text className="text-primaryPink font-black uppercase tracking-[2px] text-xs mb-2">
+              <Text className="text-primaryColor font-black uppercase tracking-[2px] text-xs mb-2">
                 {service.category?.name || 'Service'}
               </Text>
               <Text className="text-3xl font-black text-gray-900 dark:text-white leading-tight">
@@ -134,8 +135,8 @@ export default function ServiceDetailScreen({ route, navigation }) {
               <Text className="text-xl font-black text-gray-900 dark:text-white mb-4">What's Included</Text>
               {service.features.map((feature, index) => (
                 <View key={index} className="flex-row items-center mb-3">
-                  <View className="bg-primaryPink/10 p-1 rounded-full mr-3">
-                    <Feather name="check" size={14} color="#FF8383" />
+                  <View className="bg-primaryColor/10 p-1 rounded-full mr-3">
+                    <Feather name="check" size={14} color={primaryColor} />
                   </View>
                   <Text className="text-gray-700 dark:text-gray-300 font-medium">{feature}</Text>
                 </View>
@@ -152,14 +153,14 @@ export default function ServiceDetailScreen({ route, navigation }) {
         <View>
           <Text className="text-gray-400 text-xs font-bold uppercase tracking-widest">Total Price</Text>
           <View className="flex-row items-baseline mt-1">
-            <Text className="text-primaryPink text-2xl font-black">₹{service.discountedPrice || service.basePrice}</Text>
+            <Text className="text-primaryColor text-2xl font-black">₹{service.discountedPrice || service.basePrice}</Text>
             {service.discountedPrice > 0 && (
               <Text className="text-gray-400 text-sm font-bold line-through ml-2">₹{service.basePrice}</Text>
             )}
           </View>
         </View>
         <TouchableOpacity 
-          className="bg-primaryPink px-10 py-4 rounded-2xl shadow-lg shadow-primaryPink/30"
+          className="bg-primaryColor px-10 py-4 rounded-2xl shadow-lg shadow-primaryColor/30"
           onPress={() => navigation.navigate('Checkout', { service })}
         >
           <Text className="text-white font-black text-lg">Book Now</Text>

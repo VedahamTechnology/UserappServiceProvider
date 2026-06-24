@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, TextInput, Text, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { primaryColor } from '../../constants/color';
 
 const Input = ({
   value,
@@ -20,14 +21,14 @@ const Input = ({
     <View className="mb-4">
       <View
         className={`flex-row items-center border-b py-3 ${
-          isFocused ? 'border-primaryPink' : 'border-gray-300'
+          isFocused ? 'border-primaryColor' : 'border-gray-300'
         } ${error ? 'border-red-500' : ''}`}
       >
         {icon && (
           <Feather
             name={icon}
             size={22}
-            color={isFocused ? '#FF8383' : '#9CA3AF'}
+            color={isFocused ? primaryColor : '#9CA3AF'}
           />
         )}
 
@@ -38,7 +39,7 @@ const Input = ({
           secureTextEntry={secureTextEntry}
           onFocus={onFocus}
           onBlur={onBlur}
-          placeholderTextColor={isFocused ? '#FF8383' : '#9CA3AF'}
+          placeholderTextColor={isFocused ? primaryColor : '#9CA3AF'}
           className="flex-1 ml-3 text-lg dark:text-white"
           {...props}
         />
@@ -48,7 +49,7 @@ const Input = ({
             <Feather
               name={secureTextEntry ? 'eye' : 'eye-off'}
               size={22}
-              color={isFocused ? '#FF8383' : '#9CA3AF'}
+              color={isFocused ? '#fff' : '#000'}
             />
           </TouchableOpacity>
         )}

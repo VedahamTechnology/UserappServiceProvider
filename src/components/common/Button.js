@@ -6,7 +6,7 @@ const Button = ({ onPress, title, loading, className = '', textClassName = '' })
     <TouchableOpacity
       onPress={onPress}
       disabled={loading}
-      className={`bg-primaryPink py-4 rounded-xl items-center active:opacity-70 ${className} ${loading ? 'opacity-50' : ''}`}
+      className={`bg-primaryColor py-4 rounded-xl items-center active:opacity-70 ${className} ${loading ? 'opacity-50' : ''}`}
     >
       {loading ? (
         <ActivityIndicator color="#fff" />

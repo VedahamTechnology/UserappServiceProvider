@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, Image, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../components/common/Button';
+import { primaryColor } from '../../tailwind.config';
+import { getCurrentAddress } from '../services/locationService';
 
 export default function WelcomeScreen({ navigation }) {
   return (
@@ -9,7 +11,7 @@ export default function WelcomeScreen({ navigation }) {
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <Image
           source={require('../../assets/img/welcome_bg.png')}
-          style={{ width: '100%', height: '70%' }}
+          style={{ width: '100%', height: '70%',  }}
           resizeMode="cover"
         />
         

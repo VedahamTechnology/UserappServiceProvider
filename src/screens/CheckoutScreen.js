@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { bookingService } from '../services/bookingService';
 import { storage } from '../services/storageService';
+import { primaryColor } from '../constants/color';
 
 const formatDateKey = (date) => {
   const year = date.getFullYear();
@@ -138,7 +139,7 @@ export default function CheckoutScreen({ route, navigation }) {
     return (
       <SafeAreaView className="flex-1 bg-white dark:bg-slate-900 items-center justify-center px-6" edges={['top']}>
         <Text className="text-lg font-black text-gray-900 dark:text-white text-center">Service details are missing</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()} className="mt-4 bg-primaryPink px-6 py-3 rounded-2xl">
+        <TouchableOpacity onPress={() => navigation.goBack()} className="mt-4 bg-primaryColor px-6 py-3 rounded-2xl">
           <Text className="text-white font-black">Go Back</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -157,7 +158,7 @@ export default function CheckoutScreen({ route, navigation }) {
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-gray-100 dark:border-slate-800">
         <TouchableOpacity onPress={() => navigation.goBack()} className="p-2">
-          <Feather name="arrow-left" size={24} color="#FF8383" />
+          <Feather name="arrow-left" size={24} color={primaryColor} />
         </TouchableOpacity>
         <Text className="ml-2 text-xl font-black text-gray-900 dark:text-white">Review Booking</Text>
       </View>
@@ -169,20 +170,20 @@ export default function CheckoutScreen({ route, navigation }) {
         <ScrollView className="flex-1 px-4 pt-4" showsVerticalScrollIndicator={false}>
           {/* Service Summary */}
           <View className="bg-gray-50 dark:bg-slate-800 rounded-3xl p-5 mb-6 flex-row items-center border border-gray-100 dark:border-slate-700">
-            <View className="bg-primaryPink/10 p-3 rounded-2xl">
-              <Feather name="shopping-bag" size={24} color="#FF8383" />
+            <View className="bg-primaryColor/10 p-3 rounded-2xl">
+              <Feather name="shopping-bag" size={24} color={primaryColor} />
             </View>
             <View className="ml-4 flex-1">
               <Text className="text-gray-900 dark:text-white font-black text-lg">{service.name}</Text>
               <Text className="text-gray-500 dark:text-gray-400 text-sm font-medium">{service.category?.name}</Text>
             </View>
-            <Text className="text-primaryPink font-black text-lg">₹{basePrice}</Text>
+            <Text className="text-primaryColor font-black text-lg">₹{basePrice}</Text>
           </View>
 
           {/* Date Selection */}
           <View className="mb-6">
             <View className="flex-row items-center mb-3">
-              <Ionicons name="calendar-outline" size={20} color="#FF8383" />
+              <Ionicons name="calendar-outline" size={20} color={primaryColor} />
               <Text className="text-lg font-black text-gray-900 dark:text-white ml-2">Select Date</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -203,7 +204,7 @@ export default function CheckoutScreen({ route, navigation }) {
 //     console.log("error"+e);
 //   }
 // }}
-//                     className={`w-16 h-20 rounded-2xl items-center justify-center mr-3 border ${isSelected ? 'bg-primaryPink border-primaryPink  ' : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700'}`}
+//                     className={`w-16 h-20 rounded-2xl items-center justify-center mr-3 border ${isSelected ? 'bg-primaryColor border-primaryColor  ' : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700'}`}
 //                   >
 //                     <Text className={`text-[10px] font-black uppercase ${isSelected ? 'text-white/80' : 'text-gray-400'}`}>{dayName}</Text>
 //                     <Text className={`text-xl font-black mt-1 ${isSelected ? 'text-white' : 'text-gray-900 dark:text-white'}`}>{dayNum}</Text>
@@ -216,7 +217,7 @@ export default function CheckoutScreen({ route, navigation }) {
                       setSelectedDate(date);
                     }}
                     className={`w-16 h-20 rounded-2xl items-center justify-center mr-3 border ${isSelected
-                        ? 'bg-primaryPink border-primaryPink '
+                        ? 'bg-primaryColor border-primaryColor '
                         : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700'
                       }`}
                   >
@@ -242,7 +243,7 @@ export default function CheckoutScreen({ route, navigation }) {
           {/* Time Slot Selection */}
           <View className="mb-6">
             <View className="flex-row items-center mb-3">
-              <Ionicons name="time-outline" size={20} color="#FF8383" />
+              <Ionicons name="time-outline" size={20} color={primaryColor} />
               <Text className="text-lg font-black text-gray-900 dark:text-white ml-2">Select Time Slot</Text>
             </View>
             <View className="flex-row flex-wrap">
@@ -252,7 +253,7 @@ export default function CheckoutScreen({ route, navigation }) {
                   <TouchableOpacity
                     key={index}
                     onPress={() => setSelectedSlot(slot)}
-                    className={`px-4 py-3 rounded-2xl mr-2 mb-2 border ${isSelected ? 'bg-primaryPink border-primaryPink  ' : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700'}`}
+                    className={`px-4 py-3 rounded-2xl mr-2 mb-2 border ${isSelected ? 'bg-primaryColor border-primaryColor  ' : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700'}`}
                   >
                     <Text className={`font-black text-sm ${isSelected ? 'text-white' : 'text-gray-600 dark:text-gray-300'}`}>
                       {slot.startTime} - {slot.endTime}
@@ -267,21 +268,21 @@ export default function CheckoutScreen({ route, navigation }) {
           <View className="mb-6">
             <View className="flex-row justify-between items-center mb-3">
               <View className="flex-row items-center">
-                <Ionicons name="location-outline" size={20} color="#FF8383" />
+                <Ionicons name="location-outline" size={20} color={primaryColor} />
                 <Text className="text-lg font-black text-gray-900 dark:text-white ml-2">Service Address</Text>
               </View>
               <TouchableOpacity onPress={() => navigation.navigate('ManageAddress')}>
-                <Text className="text-primaryPink font-black text-xs uppercase tracking-widest">Manage</Text>
+                <Text className="text-primaryColor font-black text-xs uppercase tracking-widest">Manage</Text>
               </TouchableOpacity>
             </View>
             {addresses.map((addr, index) => (
               <TouchableOpacity
                 key={index}
                 onPress={() => setSelectedAddressIndex(index)}
-                className={`p-4 rounded-2xl mb-3 border flex-row items-center ${selectedAddressIndex === index ? 'bg-primaryPink/5 border-primaryPink   ' : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700'}`}
+                className={`p-4 rounded-2xl mb-3 border flex-row items-center ${selectedAddressIndex === index ? 'bg-primaryColor/5 border-primaryColor   ' : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700'}`}
               >
-                <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${selectedAddressIndex === index ? 'border-primaryPink' : 'border-gray-300'}`}>
-                  {selectedAddressIndex === index && <View className="w-3 h-3 bg-primaryPink rounded-full" />}
+                <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${selectedAddressIndex === index ? 'border-primaryColor' : 'border-gray-300'}`}>
+                  {selectedAddressIndex === index && <View className="w-3 h-3 bg-primaryColor rounded-full" />}
                 </View>
                 <View className="ml-4 flex-1">
                   <Text className="font-black text-gray-900 dark:text-white text-base">{addr.label}</Text>
@@ -304,7 +305,7 @@ export default function CheckoutScreen({ route, navigation }) {
           {/* Payment Method */}
           <View className="mb-6">
             <View className="flex-row items-center mb-3">
-              <Ionicons name="card-outline" size={20} color="#FF8383" />
+              <Ionicons name="card-outline" size={20} color={primaryColor} />
               <Text className="text-lg font-black text-gray-900 dark:text-white ml-2">Payment Method</Text>
             </View>
             <View className="flex-row space-x-3">
@@ -315,7 +316,7 @@ export default function CheckoutScreen({ route, navigation }) {
                 <TouchableOpacity
                   key={method.id}
                   onPress={() => setPaymentMethod(method.id)}
-                  className={`flex-1 flex-row items-center justify-center p-4 rounded-2xl border ${paymentMethod === method.id ? 'bg-primaryPink border-primaryPink  ' : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700'}`}
+                  className={`flex-1 flex-row items-center justify-center p-4 rounded-2xl border ${paymentMethod === method.id ? 'bg-primaryColor border-primaryColor  ' : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700'}`}
                 >
                   <Ionicons
                     name={method.icon}
@@ -333,7 +334,7 @@ export default function CheckoutScreen({ route, navigation }) {
           {/* Additional Notes */}
           <View className="mb-6">
             <View className="flex-row items-center mb-3">
-              <Ionicons name="chatbubble-outline" size={20} color="#FF8383" />
+              <Ionicons name="chatbubble-outline" size={20} color={primaryColor} />
               <Text className="text-lg font-black text-gray-900 dark:text-white ml-2">Notes for Professional</Text>
             </View>
             <TextInput
@@ -366,7 +367,7 @@ export default function CheckoutScreen({ route, navigation }) {
             <View className="h-[1px] bg-gray-200 dark:bg-slate-700 mb-4" />
             <View className="flex-row justify-between">
               <Text className="text-lg font-black text-gray-900 dark:text-white">Total Amount</Text>
-              <Text className="text-xl font-black text-primaryPink">₹{totalAmount}</Text>
+              <Text className="text-xl font-black text-primaryColor">₹{totalAmount}</Text>
             </View>
           </View>
 
@@ -380,7 +381,7 @@ export default function CheckoutScreen({ route, navigation }) {
           onPress={handleBooking}
           disabled={loading}
           activeOpacity={0.8}
-          className={`py-4 rounded-2xl items-center shadow-lg ${loading ? 'bg-gray-300' : 'bg-primaryPink  '}`}
+          className={`py-4 rounded-2xl items-center shadow-lg ${loading ? 'bg-gray-300' : 'bg-primaryColor  '}`}
         >
           {loading ? (
             <ActivityIndicator color="white" />

@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { notificationService } from '../services/notificationService';
+import { primaryColor } from '../constants/color';
 
 const NotificationItem = ({ item, onMarkAsRead, onDelete }) => {
   const getIcon = (type) => {
@@ -24,7 +25,7 @@ const NotificationItem = ({ item, onMarkAsRead, onDelete }) => {
       case 'booking_rejected':
         return { name: 'x-circle', color: '#EF4444', bg: '#FEE2E2' };
       default:
-        return { name: 'bell', color: '#FF8383', bg: '#FFE4E6' };
+        return { name: 'bell', color: primaryColor, bg: '#FFE4E6' };
     }
   };
 
@@ -39,7 +40,7 @@ const NotificationItem = ({ item, onMarkAsRead, onDelete }) => {
   return (
     <TouchableOpacity 
       activeOpacity={0.7}
-      className={`p-4 mb-3 rounded-3xl flex-row items-center border ${item.isRead ? 'bg-white border-gray-100' : 'bg-primaryPink/5 border-primaryPink/10'}`}
+      className={`p-4 mb-3 rounded-3xl flex-row items-center border ${item.isRead ? 'bg-white border-gray-100' : 'bg-primaryColor/5 border-primaryColor/10'}`}
       onPress={() => !item.isRead && onMarkAsRead(item._id)}
     >
       <View 
@@ -64,7 +65,7 @@ const NotificationItem = ({ item, onMarkAsRead, onDelete }) => {
       </View>
 
       {!item.isRead && (
-        <View className="ml-3 w-2 h-2 rounded-full bg-primaryPink" />
+        <View className="ml-3 w-2 h-2 rounded-full bg-primaryColor" />
       )}
     </TouchableOpacity>
   );
@@ -131,14 +132,14 @@ export default function NotificationScreen({ navigation }) {
       <View className="flex-row items-center justify-between px-4 py-3 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800">
         <View className="flex-row items-center">
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Feather name="arrow-left" size={24} color="#FF8383" />
+            <Feather name="arrow-left" size={24} color={primaryColor} />
           </TouchableOpacity>
           <Text className="ml-4 text-xl font-bold dark:text-white">Notifications</Text>
         </View>
         
         <View className="flex-row space-x-2">
           <TouchableOpacity onPress={markAllRead} className="p-2">
-            <Ionicons name="checkmark-done" size={20} color="#FF8383" />
+            <Ionicons name="checkmark-done" size={20} color={primaryColor} />
           </TouchableOpacity>
           <TouchableOpacity onPress={clearAll} className="p-2">
             <Feather name="trash-2" size={20} color="#6B7280" />
@@ -148,7 +149,7 @@ export default function NotificationScreen({ navigation }) {
 
       {loading && !refreshing ? (
         <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#FF8383" />
+          <ActivityIndicator size="large" color={primaryColor} />
         </View>
       ) : (
         <FlatList
@@ -163,7 +164,7 @@ export default function NotificationScreen({ navigation }) {
           contentContainerStyle={{ padding: 16 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => fetchNotifications(true)} colors={['#FF8383']} />
+            <RefreshControl refreshing={refreshing} onRefresh={() => fetchNotifications(true)} colors={[primaryColor]} />
           }
           ListEmptyComponent={
             <View className="py-20 items-center">

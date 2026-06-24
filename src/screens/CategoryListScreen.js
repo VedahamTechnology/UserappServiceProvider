@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { categoryService } from '../services/categoryService';
+import { primaryColor } from '../constants/color';
 
 export default function CategoryListScreen({ navigation }) {
   const [categories, setCategories] = useState([]);
@@ -43,21 +44,21 @@ export default function CategoryListScreen({ navigation }) {
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800">
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Feather name="arrow-left" size={24} color="#FF8383" />
+          <Feather name="arrow-left" size={24} color={primaryColor} />
         </TouchableOpacity>
         <Text className="ml-4 text-xl font-bold dark:text-white">All Categories</Text>
       </View>
 
       {loading && !refreshing ? (
         <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#FF8383" />
+          <ActivityIndicator size="large" color={primaryColor} />
         </View>
       ) : (
         <ScrollView 
           className="flex-1 px-4 pt-6"
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => fetchCategories(true)} colors={['#FF8383']} />
+            <RefreshControl refreshing={refreshing} onRefresh={() => fetchCategories(true)} colors={[primaryColor]} />
           }
         >
           <View className="flex-row flex-wrap justify-between">
