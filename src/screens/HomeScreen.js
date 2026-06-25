@@ -18,7 +18,7 @@ import { categoryService } from '../services/categoryService';
 import { serviceService } from '../services/serviceService';
 import { notificationService } from '../services/notificationService';
 import { primaryColor } from '../constants/color';
-
+import { getCurrentLocation } from '../services/locationService';
 const { width } = Dimensions.get('window');
 
 const SLIDER_DATA = [
@@ -46,7 +46,6 @@ const SLIDER_DATA = [
 ];
 
 export default function HomeScreen({ navigation }) {
-  const [location, setLocation] = useState('New Delhi, India');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSlide, setActiveSlide] = useState(0);
   const [categories, setCategories] = useState([]);
@@ -54,7 +53,24 @@ export default function HomeScreen({ navigation }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+ const [location, setLocation] = useState(null);
 
+   useEffect(() => {
+  const loadLocation = async () => {
+    try {
+      const locationData = await getCurrentLocation();
+
+      console.log(locationData.latitude);
+      console.log(locationData.longitude);
+
+      setLocation(locationData.shortAddress);
+    } catch (error) {
+      console.log(error.message);
+    }
+  };
+
+  loadLocation();
+}, []);
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
     if (viewableItems.length > 0) {
       setActiveSlide(viewableItems[0].index);
@@ -81,8 +97,8 @@ export default function HomeScreen({ navigation }) {
       if (unreadResponse.success) {
         setUnreadCount(unreadResponse.data?.unreadCount || 0);
       }
-      console.log('Categories:', catResponse.data);
-      console.log('Services:', servResponse.data);
+      // console.log('Categories:', catResponse.data);
+      // console.log('Services:', servResponse.data);
       console.log('Unread Notifications:', unreadResponse.data?.unreadCount);
     } catch (error) {
       console.error('Error fetching data:', error);
