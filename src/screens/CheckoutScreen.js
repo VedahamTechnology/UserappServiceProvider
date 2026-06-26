@@ -13,10 +13,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { bookingService } from '../services/bookingService';
 import { storage } from '../services/storageService';
 import { primaryColor } from '../constants/color';
 import { getCurrentLocation } from '../services/locationService';
+import { addressService } from '../services/addressService';
 
 const formatDateKey = (date) => {
   const year = date.getFullYear();
@@ -38,12 +40,27 @@ export default function CheckoutScreen({ route, navigation }) {
   const [user, setUser] = useState(null);
   const [location, setLocation] = useState(null);
 
-  // Mock addresses - In a real app, these would come from an API
-  const [addresses, setAddresses] = useState([
-    { id: 1, label: 'Home', street: '123 Main Street', city: 'Mumbai', state: 'Maharashtra', pincode: '400001' },
-    { id: 2, label: 'Work', street: 'Tech Park, Phase 2', city: 'Mumbai', state: 'Maharashtra', pincode: '400051' }
-  ]);
-  const [selectedAddressIndex, setSelectedAddressIndex] = useState(0);
+  const [addresses, setAddresses] = useState([]);
+  const [addressesLoading, setAddressesLoading] = useState(true);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+
+  const loadAddresses = useCallback(async () => {
+    try {
+      setAddressesLoading(true);
+      const response = await addressService.getAddresses();
+      if (response.success) {
+        const list = response.addresses || response.data || [];
+        setAddresses(list);
+        // Prefer default, else first.
+        const def = list.find((a) => a.isDefault) || list[0];
+        setSelectedAddressId(def ? def._id : null);
+      }
+    } catch (error) {
+      console.warn('Failed to load addresses:', error.message);
+    } finally {
+      setAddressesLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -52,6 +69,13 @@ export default function CheckoutScreen({ route, navigation }) {
     };
     fetchUser();
   }, []);
+
+  // Refetch addresses each time the screen comes into focus (e.g. user comes back from ManageAddress).
+  useFocusEffect(
+    useCallback(() => {
+      loadAddresses();
+    }, [loadAddresses])
+  );
 
   const timeSlots = [
     { startTime: '09:00', endTime: '11:00' },
@@ -77,9 +101,17 @@ export default function CheckoutScreen({ route, navigation }) {
       return;
     }
 
+    if (!selectedAddressId) {
+      Alert.alert('Address Required', 'Please add a service address before booking.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Add Address', onPress: () => navigation.navigate('ManageAddress') }
+      ]);
+      return;
+    }
+
     setLoading(true);
     try {
-      const selectedAddress = addresses[selectedAddressIndex];
+      const selectedAddress = addresses.find((a) => a._id === selectedAddressId);
       const currentLocation = await getCurrentLocation();
 
       // Try to find a vendor. If service has vendors array, use the first one.
@@ -290,23 +322,50 @@ export default function CheckoutScreen({ route, navigation }) {
                 <Text className="text-primaryColor font-black text-xs uppercase tracking-widest">Manage</Text>
               </TouchableOpacity>
             </View>
-            {addresses.map((addr, index) => (
+
+            {addressesLoading ? (
+              <View className="py-6 items-center">
+                <ActivityIndicator color={primaryColor} />
+              </View>
+            ) : addresses.length === 0 ? (
               <TouchableOpacity
-                key={index}
-                onPress={() => setSelectedAddressIndex(index)}
-                className={`p-4 rounded-2xl mb-3 border flex-row items-center ${selectedAddressIndex === index ? 'bg-primaryColor/5 border-primaryColor   ' : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700'}`}
+                onPress={() => navigation.navigate('ManageAddress')}
+                className="p-5 rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-700 items-center"
               >
-                <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${selectedAddressIndex === index ? 'border-primaryColor' : 'border-gray-300'}`}>
-                  {selectedAddressIndex === index && <View className="w-3 h-3 bg-primaryColor rounded-full" />}
-                </View>
-                <View className="ml-4 flex-1">
-                  <Text className="font-black text-gray-900 dark:text-white text-base">{addr.label}</Text>
-                  <Text className="text-gray-500 dark:text-gray-400 text-xs mt-1 leading-4" numberOfLines={2}>
-                    {addr.street}, {addr.city}, {addr.state} - {addr.pincode}
-                  </Text>
-                </View>
+                <Feather name="plus-circle" size={22} color={primaryColor} />
+                <Text className="text-primaryColor font-black mt-2 uppercase tracking-widest text-xs">
+                  Add a service address
+                </Text>
               </TouchableOpacity>
-            ))}
+            ) : (
+              addresses.map((addr) => {
+                const isSelected = selectedAddressId === addr._id;
+                return (
+                  <TouchableOpacity
+                    key={addr._id}
+                    onPress={() => setSelectedAddressId(addr._id)}
+                    className={`p-4 rounded-2xl mb-3 border flex-row items-center ${isSelected ? 'bg-primaryColor/5 border-primaryColor   ' : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700'}`}
+                  >
+                    <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${isSelected ? 'border-primaryColor' : 'border-gray-300'}`}>
+                      {isSelected && <View className="w-3 h-3 bg-primaryColor rounded-full" />}
+                    </View>
+                    <View className="ml-4 flex-1">
+                      <View className="flex-row items-center">
+                        <Text className="font-black text-gray-900 dark:text-white text-base">{addr.label || 'Other'}</Text>
+                        {addr.isDefault && (
+                          <View className="ml-2 bg-primaryColor/10 px-2 py-0.5 rounded-md">
+                            <Text className="text-primaryColor text-[10px] font-bold uppercase">Default</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text className="text-gray-500 dark:text-gray-400 text-xs mt-1 leading-4" numberOfLines={2}>
+                        {addr.street}, {addr.city}, {addr.state} - {addr.pincode}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            )}
 
             <TextInput
               placeholder="Delivery instructions (e.g. Ring the bell twice)"
