@@ -59,13 +59,15 @@ export default function MyBookingScreen({ navigation }) {
     try {
       const response = await bookingService.getUserBookings();
       if (response.success) {
-        const mappedBookings = response.data.map(item => ({
-          id: item._id,
-          service: item.serviceId?.name || 'Service',
-          date: item.scheduledDate || item.createdAt,
-          status: item.status,
-          price: item.totalPrice || item.price || '0',
-        }));
+       const bookings = response.data?.bookings || response.data || [];
+
+const mappedBookings = bookings.map(item => ({
+  id: item._id,
+  service: item.serviceId?.name || 'Service',
+  date: item.bookingDate || item.createdAt,
+  status: item.status,
+  price: item.totalPrice || item.price || 0,
+}));
         setBookings(mappedBookings);
       } else {
         Alert.alert('Error', response.message || 'Failed to fetch bookings');

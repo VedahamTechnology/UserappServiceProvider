@@ -16,6 +16,7 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import { bookingService } from '../services/bookingService';
 import { storage } from '../services/storageService';
 import { primaryColor } from '../constants/color';
+import { getCurrentLocation } from '../services/locationService';
 
 const formatDateKey = (date) => {
   const year = date.getFullYear();
@@ -35,6 +36,7 @@ export default function CheckoutScreen({ route, navigation }) {
   const [customerNotes, setCustomerNotes] = useState('');
   const [instructions, setInstructions] = useState('');
   const [user, setUser] = useState(null);
+  const [location, setLocation] = useState(null);
 
   // Mock addresses - In a real app, these would come from an API
   const [addresses, setAddresses] = useState([
@@ -78,19 +80,33 @@ export default function CheckoutScreen({ route, navigation }) {
     setLoading(true);
     try {
       const selectedAddress = addresses[selectedAddressIndex];
+      const currentLocation = await getCurrentLocation();
 
       // Try to find a vendor. If service has vendors array, use the first one.
       // Otherwise check if there's a vendorId directly on the service.
       let vendorId = null;
-      if (service.vendors && service.vendors.length > 0) {
-        vendorId = service.vendors[0].vendorId?._id || service.vendors[0].vendorId;
-      } else if (service.vendorId) {
+
+      if (service?.vendor?._id) {
+        vendorId = service.vendor._id;
+      }
+      else if (service?.vendorId) {
         vendorId = service.vendorId._id || service.vendorId;
       }
+      else if (service?.vendors?.length > 0) {
+        vendorId =
+          service.vendors[0]?.vendorId?._id ||
+          service.vendors[0]?.vendorId;
+      }
+
+      console.log('Vendor ID:', vendorId);
 
       if (!vendorId) {
         // For demo purposes, if no vendor, we might use a dummy one or show error
         // But usually services from API should have vendors
+        console.log(
+          'SERVICE DATA',
+          JSON.stringify(service, null, 2)
+        );
         Alert.alert('No Professional Available', 'We couldn\'t find a professional for this service in your area right now.');
         setLoading(false);
         return;
@@ -110,13 +126,26 @@ export default function CheckoutScreen({ route, navigation }) {
           city: selectedAddress.city,
           state: selectedAddress.state,
           pincode: selectedAddress.pincode,
+
+          latitude: currentLocation.latitude,
+          longitude: currentLocation.longitude,
+
           instructions: instructions
         },
         paymentMethod: paymentMethod,
         customerNotes: customerNotes
       };
+      console.log(
+        'BOOKING PAYLOAD',
+        JSON.stringify(bookingData, null, 2)
+      );
+      console.log(
+        'Service  Details',
+        JSON.stringify(service, null, 2)
+      );
 
       const response = await bookingService.createBooking(bookingData);
+
 
       if (response.success) {
         Alert.alert(
@@ -194,21 +223,7 @@ export default function CheckoutScreen({ route, navigation }) {
                 const isSelected = selectedDate === date;
 
                 return (
-//                    <TouchableOpacity 
-//                     key={date}
-                    
-//                 onPress={() => {
-//   try {
-//     setSelectedDate(date);
-//   } catch (e) {
-//     console.log("error"+e);
-//   }
-// }}
-//                     className={`w-16 h-20 rounded-2xl items-center justify-center mr-3 border ${isSelected ? 'bg-primaryColor border-primaryColor  ' : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700'}`}
-//                   >
-//                     <Text className={`text-[10px] font-black uppercase ${isSelected ? 'text-white/80' : 'text-gray-400'}`}>{dayName}</Text>
-//                     <Text className={`text-xl font-black mt-1 ${isSelected ? 'text-white' : 'text-gray-900 dark:text-white'}`}>{dayNum}</Text>
-//                   </TouchableOpacity>
+                  //        
 
                   <TouchableOpacity
                     key={date}
@@ -217,8 +232,8 @@ export default function CheckoutScreen({ route, navigation }) {
                       setSelectedDate(date);
                     }}
                     className={`w-16 h-20 rounded-2xl items-center justify-center mr-3 border ${isSelected
-                        ? 'bg-primaryColor border-primaryColor '
-                        : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700'
+                      ? 'bg-primaryColor border-primaryColor '
+                      : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700'
                       }`}
                   >
                     <Text
