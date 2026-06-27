@@ -4,16 +4,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { bookingService } from '../services/bookingService';
 import { primaryColor } from '../constants/color';
+import BookingActions from '../components/common/BookingActions';
 
-const MainBookingCard = ({ service, date, status, id, price, provider, navigation }) => {
+const MainBookingCard = ({ service, date, status, id, price, provider, onUpdated }) => {
   const getStatusColor = () => {
     switch(status?.toLowerCase()) {
       case 'completed': return 'text-green-500 bg-green-50 dark:bg-green-500/10';
-      case 'confirmed': 
+      case 'confirmed':
       case 'accepted': return 'text-blue-500 bg-blue-50 dark:bg-blue-500/10';
       case 'in progress': return 'text-orange-500 bg-orange-50 dark:bg-orange-500/10';
       case 'pending': return 'text-yellow-500 bg-yellow-50 dark:bg-yellow-500/10';
-      case 'cancelled': 
+      case 'cancelled':
       case 'rejected': return 'text-red-500 bg-red-50 dark:bg-red-500/10';
       default: return 'text-gray-500 bg-gray-50 dark:bg-gray-500/10';
     }
@@ -38,7 +39,7 @@ const MainBookingCard = ({ service, date, status, id, price, provider, navigatio
           <Text className="font-bold text-[10px] uppercase tracking-wider">{status}</Text>
         </View>
       </View>
-      
+
       <View className="flex-row items-center mt-6 pt-4 border-t border-gray-50 dark:border-slate-700">
         <View className="flex-1">
           <Text className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-tighter">Date & Time</Text>
@@ -53,16 +54,7 @@ const MainBookingCard = ({ service, date, status, id, price, provider, navigatio
         </View>
       </View>
 
-      {(status?.toLowerCase() === 'confirmed' || status?.toLowerCase() === 'pending' || status?.toLowerCase() === 'accepted') && (
-        <View className="flex-row mt-6 space-x-3">
-          <TouchableOpacity className="flex-1 bg-primaryColor/10 py-3 rounded-2xl items-center mx-3">
-            <Text className="text-primaryColor font-bold">Reschedule</Text>
-          </TouchableOpacity>
-          <TouchableOpacity className="flex-1 bg-gray-100 dark:bg-slate-700 py-3 rounded-2xl items-center">
-            <Text className="text-gray-600 dark:text-gray-300 font-bold">Cancel</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      <BookingActions booking={{ id, status, date }} onUpdated={onUpdated} />
     </TouchableOpacity>
   );
 };
@@ -163,7 +155,11 @@ export default function BookingsScreen({ navigation }) {
           </View>
         ) : bookings.length > 0 ? (
           bookings.map(booking => (
-            <MainBookingCard key={`booking-${booking.id}`} {...booking} navigation={navigation} />
+            <MainBookingCard
+              key={`booking-${booking.id}`}
+              {...booking}
+              onUpdated={fetchBookings}
+            />
           ))
         ) : (
           <View className="flex-1 items-center justify-center py-20">

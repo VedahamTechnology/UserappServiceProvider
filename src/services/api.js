@@ -20,9 +20,12 @@ export const api = {
       headers: await getHeaders(),
     });
 
-    const result = await response.json();
+    const result = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(result.message || 'Request failed');
+      const err = new Error(result.message || `HTTP ${response.status}`);
+      err.status = response.status;
+      err.body = result;
+      throw err;
     }
     return result;
   },
@@ -34,10 +37,13 @@ export const api = {
       body: JSON.stringify(data),
     });
 
-    const result = await response.json();
+    const result = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      throw new Error(result.message || 'Request failed');
+      const err = new Error(result.message || `HTTP ${response.status}`);
+      err.status = response.status;
+      err.body = result;
+      throw err;
     }
 
     return result;
@@ -50,9 +56,12 @@ export const api = {
       body: JSON.stringify(data),
     });
 
-    const result = await response.json();
+    const result = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(result.message || 'Request failed');
+      const err = new Error(result.message || `HTTP ${response.status}`);
+      err.status = response.status;
+      err.body = result;
+      throw err;
     }
     return result;
   },
@@ -63,9 +72,12 @@ export const api = {
       headers: await getHeaders(),
     });
 
-    const result = await response.json();
+    const result = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(result.message || 'Request failed');
+      const err = new Error(result.message || `HTTP ${response.status}`);
+      err.status = response.status;
+      err.body = result;
+      throw err;
     }
     return result;
   },

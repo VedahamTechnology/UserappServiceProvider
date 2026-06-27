@@ -4,8 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { bookingService } from '../../services/bookingService';
 import { primaryColor } from '../../constants/color';
+import BookingActions from '../../components/common/BookingActions';
 
-const BookingCard = ({ service, date, status, id, price }) => {
+const BookingCard = ({ service, date, status, id, price, onUpdated }) => {
   const getStatusColor = () => {
     switch(status?.toLowerCase()) {
       case 'completed': return 'text-green-500 bg-green-50 dark:bg-green-500/10';
@@ -43,6 +44,8 @@ const BookingCard = ({ service, date, status, id, price }) => {
           <Text className="ml-1.5 text-gray-700 dark:text-gray-300 font-bold text-sm">₹{price}</Text>
         </View>
       </View>
+
+      <BookingActions booking={{ id, status, date }} onUpdated={onUpdated} />
     </TouchableOpacity>
   );
 };
@@ -110,9 +113,10 @@ const mappedBookings = bookings.map(item => ({
           </View>
         ) : bookings.length > 0 ? (
           bookings.map(booking => (
-            <BookingCard 
+            <BookingCard
               key={`booking-${booking.id}`}
               {...booking}
+              onUpdated={() => fetchBookings()}
             />
           ))
         ) : (
