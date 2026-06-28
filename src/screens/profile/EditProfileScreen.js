@@ -1,164 +1,270 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 
-import { primaryColor } from '../../constants/color';
-import {getCurrentUser} from '../../services/authService'
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import { useT } from '../../i18n/useT';
+import { COLORS } from '../../constants/colors';
+import { isValidPhone } from '../../utils/validation';
 
-const SectionHeader = ({ title }) => (
-  <View className="px-4 py-3 bg-gray-50 dark:bg-slate-800">
-    <Text className="text-sm font-bold text-gray-500 uppercase">
-      {title}
-    </Text>
-  </View>
-);
+import { ScreenContainer, ScreenHeader } from '../../components/layout/ScreenContainer';
+import SectionCard from '../../components/profile/SectionCard';
+import InfoRow from '../../components/profile/InfoRow';
+import FormField from '../../components/common/FormField';
+import Button from '../../components/common/Button';
 
-const SettingItem = ({ icon, title, value, onPress }) => (
-  <TouchableOpacity
-    onPress={onPress}
-    className="flex-row items-center justify-between px-4 py-4 bg-white border-b border-gray-100"
-  >
-    <View className="flex-row items-center flex-1">
-      <View className="w-8">
-        <Feather name={icon} size={20} color={primaryColor} />
-      </View>
-
-      <View className="ml-3 flex-1">
-        <Text className="text-base font-semibold text-gray-800">
-          {title}
-        </Text>
-
-        {value ? (
-          <Text className="text-sm text-gray-500 mt-1">
-            {value}
-          </Text>
-        ) : null}
-      </View>
-    </View>
-
-    <Feather name="chevron-right" size={20} color="#9CA3AF" />
-  </TouchableOpacity>
-);
+const GENDER_OPTIONS = [
+  { value: 'male', key: 'auth.genderMale' },
+  { value: 'female', key: 'auth.genderFemale' },
+  { value: 'other', key: 'auth.genderOther' },
+];
 
 export default function EditProfileScreen({ navigation }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const t = useT();
+  const toast = useToast();
+  const { user, refreshUser, updateProfile } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    gender: 'male',
+  });
+  const [error, setError] = useState('');
 
-  const loadProfile = async () => {
-    try {
-      const data = await getCurrentUser();
-      console.log('User data:', data); // Log the entire response for debugging
-
-      if (data.success) {
-        setUser(data.user);
+  // Seed the form from the current user and refresh on mount so the
+  // screen reflects the latest data.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        await refreshUser();
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    } catch (error) {
-      console.log(error);
+    })();
+    return () => { cancelled = true; };
+  }, [refreshUser]);
+
+  useEffect(() => {
+    if (!user) return;
+    setForm({
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      phone: user.phone || '',
+      gender: user.gender || 'male',
+    });
+  }, [user]);
+
+  const original = useMemo(
+    () => ({
+      firstName: user?.firstName || '',
+      lastName: user?.lastName || '',
+      phone: user?.phone || '',
+      gender: user?.gender || 'male',
+    }),
+    [user]
+  );
+
+  const dirty =
+    form.firstName !== original.firstName ||
+    form.lastName !== original.lastName ||
+    form.phone !== original.phone ||
+    form.gender !== original.gender;
+
+  const handleChange = (field, value) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    if (error) setError('');
+  };
+
+  const validate = () => {
+    if (!form.firstName.trim()) return t('editProfile.errFirstNameRequired');
+    if (!form.lastName.trim()) return t('editProfile.errLastNameRequired');
+    if (form.phone && !isValidPhone(form.phone)) {
+      return t('auth.errInvalidPhone') || 'Please enter a valid phone number';
+    }
+    return '';
+  };
+
+  const handleSave = async () => {
+    const msg = validate();
+    if (msg) {
+      setError(msg);
+      toast.show(msg, 'error');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const response = await updateProfile({
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        phone: form.phone.trim(),
+        gender: form.gender,
+      });
+      if (response?.success) {
+        toast.show(t('editProfile.saveSuccess'), 'success');
+        navigation.goBack();
+      } else {
+        const errMsg = response?.message || t('editProfile.saveFailed');
+        setError(errMsg);
+        toast.show(errMsg, 'error');
+      }
+    } catch (err) {
+      const errMsg = err?.message || t('editProfile.saveFailed');
+      setError(errMsg);
+      toast.show(errMsg, 'error');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  useEffect(() => {
-    loadProfile();
-  }, []);
-
-  if (loading) {
-    return (
-      <View className="flex-1 justify-center items-center">
-        <ActivityIndicator
-          size="large"
-          color={primaryColor}
-        />
-      </View>
-    );
-  }
-
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <View className="flex-row items-center px-4 py-3 border-b border-gray-100">
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Feather
-            name="arrow-left"
-            size={24}
-            color={primaryColor}
-          />
-        </TouchableOpacity>
+    <ScreenContainer bgClass="bg-gray-50 dark:bg-slate-900" edges={['top']}>
+      <ScreenHeader title={t('editProfile.title')} onBack={() => navigation.goBack()} />
 
-        <Text className="ml-4 text-xl font-bold">
-          Edit Profile
-        </Text>
-      </View>
-
-      <ScrollView className="flex-1 bg-gray-50">
-        <SectionHeader title="Personal Information" />
-
-        <SettingItem
-          icon="user"
-          title="Full Name"
-          value={`${user?.firstName || ''} ${user?.lastName || ''}`}
-        />
-
-        <SettingItem
-          icon="mail"
-          title="Email"
-          value={user?.email}
-        />
-
-        <SettingItem
-          icon="phone"
-          title="Phone"
-          value={user?.phone}
-        />
-
-        <SettingItem
-          icon="shield"
-          title="Role"
-          value={user?.role}
-        />
-
-        <SettingItem
-          icon="check-circle"
-          title="Status"
-          value={user?.isActive ? 'Active' : 'Inactive'}
-        />
-
-        <SectionHeader title="Account Information" />
-
-        <SettingItem
-          icon="hash"
-          title="User ID"
-          value={user?.userId}
-        />
-
-        <SettingItem
-          icon="calendar"
-          title="Created At"
-          value={
-            user?.createdAt
-              ? new Date(user.createdAt).toLocaleDateString()
-              : ''
-          }
-        />
-
-        <View className="p-4">
-          <TouchableOpacity
-            className="py-4 rounded-xl items-center"
-            style={{ backgroundColor: primaryColor }}
-          >
-            <Text className="text-white font-bold text-lg">
-              Save Changes
-            </Text>
-          </TouchableOpacity>
+      {loading && !user ? (
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      ) : (
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: 32 }}
+        >
+          {/* Personal Information */}
+          <Text className="px-6 mt-8 mb-3 text-base font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            {t('editProfile.sectionPersonal')}
+          </Text>
+          <SectionCard className="mx-4 px-5">
+            <View className="flex-row justify-between p-2">
+              <View className="w-[48%]">
+                <FormField
+                  label={t('editProfile.fieldFirstName')}
+                  value={form.firstName}
+                  onChangeText={(v) => handleChange('firstName', v)}
+                  placeholder={t('editProfile.fieldFirstName')}
+                  autoCapitalize="words"
+                />
+              </View>
+              <View className="w-[48%]">
+                <FormField
+                  label={t('editProfile.fieldLastName')}
+                  value={form.lastName}
+                  onChangeText={(v) => handleChange('lastName', v)}
+                  placeholder={t('editProfile.fieldLastName')}
+                  autoCapitalize="words"
+                />
+              </View>
+            </View>
+
+            <FormField
+              label={t('editProfile.fieldPhone')}
+              value={form.phone}
+              onChangeText={(v) => handleChange('phone', v)}
+              placeholder={t('editProfile.fieldPhone')}
+              keyboardType="phone-pad"
+            />
+
+            <View className="mt-3 mb-1 p-2">
+              <Text className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                {t('editProfile.fieldGender')}
+              </Text>
+              <View className="flex-row justify-between">
+                {GENDER_OPTIONS.map((g) => {
+                  const selected = form.gender === g.value;
+                  return (
+                    <TouchableOpacity
+                      key={g.value}
+                      onPress={() => handleChange('gender', g.value)}
+                      className="flex-row items-center"
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                    >
+                      <View
+                        className={`w-5 h-5 rounded-full border-2 items-center justify-center ${
+                          selected ? 'border-primary' : 'border-gray-300 dark:border-slate-600'
+                        }`}
+                      >
+                        {selected ? (
+                          <View className="w-2.5 h-2.5 rounded-full bg-primary" />
+                        ) : null}
+                      </View>
+                      <Text
+                        className={`capitalize ml-2 ${
+                          selected
+                            ? 'text-gray-900 dark:text-white font-bold'
+                            : 'text-gray-500'
+                        }`}
+                      >
+                        {t(g.key)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          </SectionCard>
+
+          {/* Email (read-only) */}
+          <Text className="px-6 mt-8 mb-3 text-base font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            {t('auth.email')}
+          </Text>
+          <SectionCard className="mx-4 px-5">
+            <InfoRow
+              label={t('auth.email')}
+              value={user?.email}
+              isLast
+            />
+            <Text className="text-xs text-gray-400 dark:text-gray-500 italic -mt-2 mb-3 px-1">
+              {t('editProfile.emailImmutableHint')}
+            </Text>
+          </SectionCard>
+
+          {/* Account Information */}
+          <Text className="px-6 mt-8 mb-3 text-base font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            {t('editProfile.sectionAccount')}
+          </Text>
+          <SectionCard className="mx-4 mb-2 px-4">
+            <InfoRow label={t('editProfile.rowRole')} value={user?.role} />
+            <InfoRow
+              label={t('editProfile.rowStatus')}
+              value={user?.isActive ? t('common.active') : t('common.inactive')}
+              isLast
+            />
+          </SectionCard>
+
+          <SectionCard className="mx-4 px-3">
+            <InfoRow label={t('editProfile.rowUserId')} value={user?.userId || user?.id} />
+            <InfoRow
+              label={t('editProfile.rowCreatedAt')}
+              value={
+                user?.createdAt
+                  ? new Date(user.createdAt).toLocaleDateString()
+                  : ''
+              }
+              isLast
+            />
+          </SectionCard>
+
+          {error ? (
+            <Text className="text-danger text-center text-sm mt-4 px-6">{error}</Text>
+          ) : null}
+
+          <View className="px-6 mt-6 mb-4">
+            <Button
+              title={t('auth.saveChanges')}
+              onPress={handleSave}
+              loading={saving}
+              disabled={!dirty || saving}
+            />
+          </View>
+        </ScrollView>
+      )}
+    </ScreenContainer>
   );
 }

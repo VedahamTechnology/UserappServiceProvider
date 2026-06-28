@@ -1,192 +1,199 @@
-import { Feather, MaterialIcons } from '@expo/vector-icons';
-import React, { useState, useEffect } from 'react';
-import { View, Text, Image, TouchableOpacity, ScrollView, Switch, Alert, ActivityIndicator } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  Image,
+  ScrollView,
+  TouchableOpacity,
+  Switch,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useColorScheme } from 'nativewind';
-import * as ImagePicker from 'expo-image-picker';
-import { getCurrentUser, logout } from '../services/authService';
-import { storage } from '../services/storageService';
-import { primaryColor } from '../constants/color';
+import { Feather } from '@expo/vector-icons';
 
-const ProfileMenuItem = ({ icon, title, onPress, isLast, color = primaryColor, rightElement }) => (
-  <TouchableOpacity
-    onPress={onPress}
-    disabled={!!rightElement}
-    className={`flex-row items-center justify-between py-4 ${!isLast ? 'border-b border-gray-50 dark:border-slate-700' : ''}`}
-  >
-    <View className="flex-row items-center">
-      <View className="w-8 items-center">
-        <Feather name={icon} size={22} color={color} />
-      </View>
-      <Text className="ml-4 text-lg text-gray-700 dark:text-gray-200 font-medium">{title}</Text>
-    </View>
-    {rightElement ? rightElement : <Feather name="chevron-right" size={20} color="#9CA3AF" />}
-  </TouchableOpacity>
-);
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
+import { useTheme } from '../context/ThemeContext';
+import { useT } from '../i18n/useT';
+import { useImagePicker } from '../hooks/useImagePicker';
+import { COLORS } from '../constants/colors';
+
+import ProfileMenuItem from '../components/profile/ProfileMenuItem';
+import SectionCard from '../components/profile/SectionCard';
 
 export default function ProfileScreen({ navigation }) {
-  const { colorScheme, toggleColorScheme } = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const [profileImage, setProfileImage] = useState(null);
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const t = useT();
+  const toast = useToast();
+  const { user, logout } = useAuth();
+  const { isDark, toggleScheme } = useTheme();
 
-  useEffect(() => {
-    fetchUserData();
-  }, []);
+  const { image, pick } = useImagePicker();
 
-  const fetchUserData = async () => {
-    try {
-      setLoading(true);
-      // Try to get from local storage first for immediate display
-      const cachedUser = await storage.getUser();
-      if (cachedUser) setUser(cachedUser);
-
-      // Then fetch fresh data from API
-      const response = await getCurrentUser();
-      if (response.success) {
-        setUser(response.user);
-      }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const pickImage = async () => {
-    // Request permissions
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
-    if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Sorry, we need camera roll permissions to make this work!');
-      return;
-    }
-
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      setProfileImage(result.assets[0].uri);
-    }
-  };
-
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
+      t('auth.logoutTitle'),
+      t('auth.logoutConfirm'),
       [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Logout", 
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('auth.logout'),
+          style: 'destructive',
           onPress: async () => {
             try {
               await logout();
+            } catch (e) {
+              // Even if logout request fails, the local session is cleared.
+              // We surface a toast for diagnostics only.
+              toast.show(e?.message || t('errors.genericError'), 'error');
+            } finally {
               navigation.replace('Login');
-            } catch (error) {
-              navigation.replace('Login'); // Redirect anyway
             }
-          }, 
-          style: 'destructive' 
-        }
-      ]
+          },
+        },
+      ],
     );
-  };
+  }, [logout, navigation, t, toast]);
 
-  if (loading && !user) {
+  if (!user) {
     return (
       <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-slate-900">
-        <ActivityIndicator size="large" color={primaryColor} />
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
 
+  const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || t('profile.userFallback');
+  const avatarSource = image
+    ? { uri: image }
+    : user.avatar
+      ? { uri: user.avatar }
+      : require('../../assets/img/user_avtar.png');
+
   return (
-    <SafeAreaView
-      edges={['top']}
-      className="flex-1 bg-gray-50 dark:bg-slate-900"
-    >
-      <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+    <SafeAreaView edges={['top']} className="flex-1 bg-gray-50 dark:bg-slate-900">
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: 32 }}
+      >
         {/* Header */}
-        <View className="px-4 py-4">
-          <Text className="text-3xl font-extrabold text-gray-900 dark:text-white">
-            Profile
+        <View className="px-6 pt-6 pb-2">
+          <Text className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+            {t('profile.title')}
           </Text>
         </View>
 
         {/* User Card */}
-        <View className="bg-primaryColor rounded-2xl p-5 mx-4 shadow-lg shadow-primaryColor/30 flex-row items-center justify-between">
-          <View className="flex-row items-center">
-            <View className="relative">
-              <Image
-                source={profileImage ? { uri: profileImage } : require('../../assets/img/user_avtar.png')}
-                className="w-20 h-20 rounded-full border-2 border-white/30"
-              />
-              <TouchableOpacity 
-                onPress={pickImage}
-                className="absolute bottom-0 right-0 bg-white p-1.5 rounded-full shadow-sm"
-              >
-                <Feather name="camera" size={14} color={primaryColor} />
-              </TouchableOpacity>
+        <View className="mx-4 mt-4 bg-primary rounded-3xl p-6 shadow-lg shadow-primary/30">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center flex-1 pr-3">
+              <View className="relative">
+                <Image
+                  source={avatarSource}
+                  className="w-20 h-20 rounded-full border-2 border-white/30"
+                />
+                <TouchableOpacity
+                  onPress={pick}
+                  className="absolute -bottom-1 -right-1 bg-white p-2 rounded-full shadow-md"
+                  accessibilityLabel={t('profile.changePhoto')}
+                >
+                  <Feather name="camera" size={14} color={COLORS.primary} />
+                </TouchableOpacity>
+              </View>
+              <View className="ml-4 flex-1">
+                <Text className="text-xl font-bold text-white" numberOfLines={1}>
+                  {fullName}
+                </Text>
+                <Text className="text-white/80 text-sm mt-0.5" numberOfLines={1}>
+                  {user.email}
+                </Text>
+              </View>
             </View>
-            <View className="ml-4">
-              <Text className="text-2xl font-bold text-white">
-                {user ? `${user.firstName} ${user.lastName}` : 'User Name'}
-              </Text>
-              <Text className="text-white/80 text-base">
-                {user ? user.email : '@username'}
-              </Text>
-            </View>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('EditProfile')}
+              className="bg-white/20 p-3 rounded-xl"
+              accessibilityLabel={t('profile.editProfile')}
+            >
+              <Feather name="edit-3" size={20} color="white" />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('EditProfile')}
-            className="bg-white/20 p-2.5 rounded-xl"
-          >
-            <Feather name="edit-3" size={22} color="white" />
-          </TouchableOpacity>
         </View>
 
-        {/* Container 2: Main Actions */}
-        <View className="bg-white dark:bg-slate-800 rounded-2xl mx-4 mt-6 px-4 shadow-sm">
-          <ProfileMenuItem icon="percent" title="Scrap Deals" onPress={() => navigation.navigate('ScrapDeals')} />
-          <ProfileMenuItem icon="layers" title="My Plans" onPress={() => navigation.navigate('MyPlans')} />
-          <ProfileMenuItem icon="calendar" title="My Booking" onPress={() => navigation.navigate('MyBooking')} />
-          <ProfileMenuItem icon="star" title="My Rating" onPress={() => navigation.navigate('MyRating')} />
-          <ProfileMenuItem icon="map-pin" title="Manage Address" onPress={() => navigation.navigate('ManageAddress')} />
-          <ProfileMenuItem 
-            icon={isDark ? "moon" : "sun"} 
-            title={isDark ? "Dark Mode" : "Light Mode"} 
-            isLast 
+        {/* Main Actions */}
+        <View className="px-6 mt-8 mb-3">
+          <Text className="text-base font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            {t('profile.sectionMain')}
+          </Text>
+        </View>
+        <SectionCard>
+          <ProfileMenuItem
+            icon="percent"
+            title={t('profile.menuScrapDeals')}
+            onPress={() => navigation.navigate('ScrapDeals')}
+          />
+          <ProfileMenuItem
+            icon="layers"
+            title={t('profile.menuMyPlans')}
+            onPress={() => navigation.navigate('MyPlans')}
+          />
+          <ProfileMenuItem
+            icon="calendar"
+            title={t('profile.menuMyBooking')}
+            onPress={() => navigation.navigate('MyBooking')}
+          />
+          <ProfileMenuItem
+            icon="star"
+            title={t('profile.menuMyRating')}
+            onPress={() => navigation.navigate('MyRating')}
+          />
+          <ProfileMenuItem
+            icon="map-pin"
+            title={t('profile.menuManageAddress')}
+            onPress={() => navigation.navigate('ManageAddress')}
+
+
+          />
+          <ProfileMenuItem
+            icon="moon"
+            title={"Theme"}
             rightElement={
               <Switch
                 value={isDark}
-                onValueChange={toggleColorScheme}
-                trackColor={{ false: '#D1D5DB', true: primaryColor }}
+                onValueChange={toggleScheme}
+                trackColor={{ false: '#D1D5DB', true: COLORS.primary }}
                 thumbColor={isDark ? '#FFFFFF' : '#F3F4F6'}
               />
             }
           />
-        </View>
 
-        {/* Container 3: Support & App */}
-        <View className="px-4 mt-6 mb-2">
-          <Text className="text-xl font-bold text-gray-800 dark:text-white">More</Text>
+
+        </SectionCard>
+
+        {/* Support & App */}
+        <View className="px-6 mt-8 mb-3">
+          <Text className="text-base font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            {t('profile.sectionMore')}
+          </Text>
         </View>
-        
-        <View className="bg-white dark:bg-slate-800 rounded-2xl mx-4 mb-8 px-4 shadow-sm">
-          <ProfileMenuItem icon="help-circle" title="Help and Support" onPress={() => navigation.navigate('HelpSupport')} />
-          <ProfileMenuItem icon="info" title="About App" onPress={() => navigation.navigate('AboutApp')} />
-          <ProfileMenuItem 
-            icon="log-out" 
-            title="Logout" 
-            onPress={handleLogout} 
-            isLast 
+        <SectionCard>
+          <ProfileMenuItem
+            icon="help-circle"
+            title={t('profile.menuHelpSupport')}
+            onPress={() => navigation.navigate('HelpSupport')}
           />
-        </View>
+          <ProfileMenuItem
+            icon="info"
+            title={t('profile.menuAboutApp')}
+            onPress={() => navigation.navigate('AboutApp')}
+          />
+          <ProfileMenuItem
+            icon="log-out"
+            title={t('profile.menuLogout')}
+            onPress={handleLogout}
+            isLast
+          />
+        </SectionCard>
       </ScrollView>
     </SafeAreaView>
   );

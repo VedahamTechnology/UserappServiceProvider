@@ -1,180 +1,144 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+
+import { useBookings } from '../context/BookingsContext';
+import { useToast } from '../context/ToastContext';
+import { useT } from '../i18n/useT';
+import { COLORS } from '../constants/colors';
+import { extractList, mapBooking } from '../utils/mappers';
+import { useFocusRefresh } from '../hooks/useFocusRefresh';
+
+import BookingCard from '../components/booking/BookingCard';
+import LoadingView from '../components/feedback/LoadingView';
+import EmptyState from '../components/feedback/EmptyState';
+import ErrorState from '../components/feedback/ErrorState';
+
 import { bookingService } from '../services/bookingService';
-import { primaryColor } from '../constants/color';
-import BookingActions from '../components/common/BookingActions';
 
-const MainBookingCard = ({ service, date, status, id, price, provider, onUpdated }) => {
-  const getStatusColor = () => {
-    switch(status?.toLowerCase()) {
-      case 'completed': return 'text-green-500 bg-green-50 dark:bg-green-500/10';
-      case 'confirmed':
-      case 'accepted': return 'text-blue-500 bg-blue-50 dark:bg-blue-500/10';
-      case 'in progress': return 'text-orange-500 bg-orange-50 dark:bg-orange-500/10';
-      case 'pending': return 'text-yellow-500 bg-yellow-50 dark:bg-yellow-500/10';
-      case 'cancelled':
-      case 'rejected': return 'text-red-500 bg-red-50 dark:bg-red-500/10';
-      default: return 'text-gray-500 bg-gray-50 dark:bg-gray-500/10';
-    }
-  };
+const TABS = ['All', 'Pending', 'Accepted', 'Completed', 'Cancelled'];
 
-  const formattedDate = date ? new Date(date).toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  }) : 'N/A';
-
-  return (
-    <TouchableOpacity className="bg-white dark:bg-slate-800 rounded-3xl p-5 mb-4    border border-gray-100 dark:border-slate-700">
-      <View className="flex-row justify-between items-start">
-        <View className="flex-1">
-          <Text className="text-xl font-bold text-gray-900 dark:text-white">{service}</Text>
-          <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">Booking ID: #{id?.slice(-6).toUpperCase() || 'N/A'}</Text>
-        </View>
-        <View className={`px-3 py-1.5 rounded-xl ${getStatusColor()}`}>
-          <Text className="font-bold text-[10px] uppercase tracking-wider">{status}</Text>
-        </View>
-      </View>
-
-      <View className="flex-row items-center mt-6 pt-4 border-t border-gray-50 dark:border-slate-700">
-        <View className="flex-1">
-          <Text className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-tighter">Date & Time</Text>
-          <View className="flex-row items-center mt-1">
-            <Feather name="calendar" size={14} color={primaryColor} />
-            <Text className="ml-2 text-gray-700 dark:text-gray-300 font-semibold text-sm">{formattedDate}</Text>
-          </View>
-        </View>
-        <View className="items-end">
-          <Text className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-tighter">Amount Paid</Text>
-          <Text className="text-primaryColor font-extrabold text-lg mt-1">₹{price}</Text>
-        </View>
-      </View>
-
-      <BookingActions booking={{ id, status, date }} onUpdated={onUpdated} />
-    </TouchableOpacity>
-  );
-};
-
+/**
+ * Bookings tab. Fetches per-tab on tab change so the badge copy stays
+ * accurate even when the global BookingsContext is filtered to a different
+ * status. Re-fetches when the screen regains focus.
+ */
 export default function BookingsScreen({ navigation }) {
+  const t = useT();
+  const toast = useToast();
+
+  const { refresh: refreshAll } = useBookings();
+
   const [activeTab, setActiveTab] = useState('All');
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
 
-  const tabs = ['All', 'Pending', 'Accepted', 'Completed', 'Cancelled'];
-
-  const fetchBookings = useCallback(async (isRefreshing = false) => {
-    if (isRefreshing) setRefreshing(true);
+  const fetchBookings = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
     else setLoading(true);
-
+    setError(null);
     try {
       const response = await bookingService.getUserBookings({
-        status: activeTab === 'All' ? null : activeTab.toLowerCase()
+        status: activeTab === 'All' ? undefined : activeTab.toLowerCase(),
       });
-      
-      if (response.success) {
-        // Map the API response to our card format
-        const mappedBookings = response.data.map(item => ({
-          id: item._id,
-          service: item.serviceId?.name || 'Service',
-          date: item.scheduledDate || item.createdAt,
-          status: item.status,
-          price: item.totalPrice || item.price || '0',
-          provider: item.providerId?.name
-        }));
-        setBookings(mappedBookings);
+      if (response?.success) {
+        setBookings(extractList(response, 'bookings', 'data').map(mapBooking));
       } else {
-        Alert.alert('Error', response.message || 'Failed to fetch bookings');
+        setBookings([]);
       }
-    } catch (error) {
-      console.error('Error fetching bookings:', error);
-      Alert.alert('Error', 'Something went wrong while fetching bookings');
+    } catch (e) {
+      setError(e);
+      toast.show(e?.message || t('errors.failedToFetch'), 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeTab]);
+  }, [activeTab, t, toast]);
 
-  useEffect(() => {
-    fetchBookings();
-  }, [fetchBookings]);
-
-  const onRefresh = useCallback(() => {
-    fetchBookings(true);
-  }, [fetchBookings]);
+  useFocusRefresh(fetchBookings);
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50 dark:bg-slate-900" edges={['top']}>
-      {/* Header */}
-      <View className="bg-white dark:bg-slate-900   ">
+      <View className="bg-white dark:bg-slate-900">
         <View className="px-4 py-4">
           <Text className="text-3xl font-extrabold text-gray-900 dark:text-white">
-            Bookings
+            {t('bookings.title')}
           </Text>
         </View>
-        
+
         {/* Scrollable Tabs */}
-        <View>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            className="px-4 mb-4"
-            contentContainerStyle={{ paddingRight: 20 }}
-          >
-            <View className="flex-row bg-gray-100 dark:bg-slate-800 p-1 rounded-2xl">
-              {tabs.map(tab => (
-                <TouchableOpacity 
-                  key={`tab-${tab}`}
-                  onPress={() => setActiveTab(tab)}
-                  className={`px-6 py-3 rounded-xl items-center ${activeTab === tab ? 'bg-white dark:bg-slate-700   ' : ''}`}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="px-4 mb-4"
+          contentContainerStyle={{ paddingRight: 20 }}
+        >
+          <View className="flex-row bg-gray-100 dark:bg-slate-800 p-1 rounded-2xl">
+            {TABS.map((tab) => (
+              <TouchableOpacity
+                key={`tab-${tab}`}
+                onPress={() => setActiveTab(tab)}
+                className={`px-6 py-3 rounded-xl items-center ${
+                  activeTab === tab ? 'bg-white dark:bg-slate-700' : ''
+                }`}
+              >
+                <Text
+                  className={`font-bold whitespace-nowrap ${
+                    activeTab === tab ? 'text-primary' : 'text-gray-500 dark:text-gray-400'
+                  }`}
                 >
-                  <Text className={`font-bold whitespace-nowrap ${activeTab === tab ? 'text-primaryColor' : 'text-gray-500 dark:text-gray-400'}`}>
-                    {tab}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-        </View>
+                  {t(`bookings.tabs.${tab.toLowerCase()}`)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
       </View>
 
-      <ScrollView 
-        className="flex-1 p-4" 
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[primaryColor]} />
-        }
-      >
-        {loading && !refreshing ? (
-          <View className="py-20">
-            <ActivityIndicator size="large" color={primaryColor} />
-          </View>
-        ) : bookings.length > 0 ? (
-          bookings.map(booking => (
-            <MainBookingCard
-              key={`booking-${booking.id}`}
-              {...booking}
-              onUpdated={fetchBookings}
+      {loading && !refreshing ? (
+        <LoadingView />
+      ) : error ? (
+        <ErrorState message={error.message} onRetry={fetchBookings} />
+      ) : (
+        <ScrollView
+          className="flex-1 p-4"
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchBookings(true)}
+              colors={[COLORS.primary]}
             />
-          ))
-        ) : (
-          <View className="flex-1 items-center justify-center py-20">
-            <View className="w-20 h-20 bg-gray-100 dark:bg-slate-800 rounded-full items-center justify-center mb-4">
-              <Feather name="calendar" size={32} color="#9CA3AF" />
-            </View>
-            <Text className="text-lg font-bold text-gray-900 dark:text-white">No {activeTab} Bookings</Text>
-            <Text className="text-gray-500 dark:text-gray-400 text-center mt-2 px-10">
-              {activeTab === 'All' ? "You haven't made any bookings yet." : `You don't have any ${activeTab.toLowerCase()} bookings.`}
-            </Text>
-          </View>
-        )}
-        <View className="h-10" />
-      </ScrollView>
+          }
+        >
+          {bookings.length > 0 ? (
+            bookings.map((booking) => (
+              <BookingCard
+                key={booking.id}
+                booking={booking}
+                onUpdated={() => {
+                  fetchBookings();
+                  refreshAll();
+                }}
+              />
+            ))
+          ) : (
+            <EmptyState
+              icon="calendar"
+              title={t('bookings.noBookings')}
+              subtitle={
+                activeTab === 'All'
+                  ? t('bookings.noBookingsHint')
+                  : t('bookings.noBookingsForTab', { tab: activeTab })
+              }
+            />
+          )}
+          <View className="h-10" />
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
-

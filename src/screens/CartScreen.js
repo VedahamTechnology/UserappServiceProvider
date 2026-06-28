@@ -1,13 +1,22 @@
-import { View, Text } from 'react-native'
-import React from 'react'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import React from 'react';
+import { View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-export default function CartScreen() {
+import { useT } from '../i18n/useT';
+import EmptyState from '../components/feedback/EmptyState';
+
+export default function CartScreen({ navigation }) {
+  const t = useT();
+
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-slate-900" edges={['bottom']}>
-      <View className="flex-1 justify-center items-center">
-        <Text className="text-gray-900 dark:text-white text-lg">Coming Soon</Text>
-      </View>
+    <SafeAreaView className="flex-1 bg-white dark:bg-slate-900" edges={['top']}>
+      <EmptyState
+        icon="shopping-cart"
+        title={t('cart.empty')}
+        subtitle={t('cart.emptyHint')}
+        ctaLabel={t('cart.exploreCta')}
+        onCtaPress={() => navigation.navigate('Home')}
+      />
     </SafeAreaView>
-  )
+  );
 }

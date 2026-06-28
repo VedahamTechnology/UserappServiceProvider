@@ -1,8 +1,11 @@
 import * as Location from 'expo-location';
 
+/**
+ * Best-effort reverse geocoding of the current device location.
+ * Returns both a full and a short formatted address.
+ */
 export const getCurrentLocation = async () => {
   const { status } = await Location.requestForegroundPermissionsAsync();
-
   if (status !== 'granted') {
     throw new Error('Location permission denied');
   }
@@ -13,12 +16,8 @@ export const getCurrentLocation = async () => {
 
   const { latitude, longitude } = currentLocation.coords;
 
-  const addresses = await Location.reverseGeocodeAsync({
-    latitude,
-    longitude,
-  });
-
-  const address = addresses[0];
+  const addresses = await Location.reverseGeocodeAsync({ latitude, longitude });
+  const address = addresses[0] || {};
 
   const fullAddress = [
     address.name,
@@ -28,23 +27,14 @@ export const getCurrentLocation = async () => {
     address.region,
     address.postalCode,
     address.country,
-  ]
-    .filter(Boolean)
-    .join(', ');
-    const shortAddress = [
+  ].filter(Boolean).join(', ');
+
+  const shortAddress = [
     address.name,
     address.street,
     address.district,
     address.city,
+  ].filter(Boolean).join(', ');
 
-  ]
-    .filter(Boolean)
-    .join(', ');
-
-  return {
-    latitude,
-    longitude,
-    fullAddress,
-    shortAddress,
-  };
+  return { latitude, longitude, fullAddress, shortAddress };
 };

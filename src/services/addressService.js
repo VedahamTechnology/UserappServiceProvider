@@ -1,39 +1,14 @@
-import { api } from './api';
+import { api } from './api/client';
+import { ENDPOINTS } from './api/endpoints';
 
 export const addressService = {
-  getAddresses: async () => {
-    try {
-      const response = await api.get('/api/user/addresses');
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
+  getAddresses: () => api.get(ENDPOINTS.addresses()),
 
-  addAddress: async (addressData) => {
-    try {
-      const response = await api.post('/api/user/addresses', addressData);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
+  addAddress: (addressData) => api.post(ENDPOINTS.addresses(), addressData),
 
-  updateAddress: async (addressId, addressData) => {
-    try {
-      const response = await api.put(`/api/user/addresses/${addressId}`, addressData);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
+  updateAddress: (addressId, addressData) =>
+    api.put(ENDPOINTS.updateAddress(addressId), addressData),
 
-  setDefaultAddress: async (addressId) => {
-    try {
-      const response = await api.put(`/api/user/addresses/${addressId}/default`, {});
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
+  setDefaultAddress: (addressId) =>
+    api.put(ENDPOINTS.setDefaultAddress(addressId), {}),
 };

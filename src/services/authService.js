@@ -1,60 +1,64 @@
-import { api } from './api';
+import { api } from './api/client';
+import { ENDPOINTS } from './api/endpoints';
 import { storage } from './storageService';
 
-export const login = async (email, password) => {
-  try {
-    const response = await api.post('/api/auth/login', {
-      email,
-      password,
-      role: "customer"
-    });
-    
-    if (response.success && response.accessToken) {
-      await storage.saveToken(response.accessToken);
-      await storage.saveUser(response.user);
-    }
-    
-    return response;
-  } catch (error) {
-    throw error;
+/**
+ * Persist token + user from a successful auth response.
+ * Used by both `login` and `register`.
+ */
+const persistAuth = async (response) => {
+  if (response?.success && response.accessToken) {
+    await storage.saveToken(response.accessToken);
+    if (response.user) await storage.saveUser(response.user);
   }
+  return response;
+};
+
+export const login = async (email, password) => {
+  const response = await api.post(ENDPOINTS.authLogin(), {
+    email,
+    password,
+    role: 'customer',
+  });
+  return persistAuth(response);
 };
 
 export const register = async (userData) => {
-  try {
-    const response = await api.post('/api/auth/register/customer', userData);
-    
-    if (response.success && response.accessToken) {
-      await storage.saveToken(response.accessToken);
-      await storage.saveUser(response.user);
-    }
-    
-    return response;
-  } catch (error) {
-    throw error;
-  }
+  const response = await api.post(ENDPOINTS.authRegister(), userData);
+  return persistAuth(response);
 };
 
 export const getCurrentUser = async () => {
-  try {
-    const response = await api.get('/api/auth/me');
-    if (response.success && response.user) {
-      await storage.saveUser(response.user);
-    }
-    return response;
-  } catch (error) {
-    throw error;
+  const response = await api.get(ENDPOINTS.authMe());
+  if (response?.success && response.user) {
+    await storage.saveUser(response.user);
   }
+  return response;
 };
 
+/**
+ * Update the current user's profile. Email is immutable on the backend.
+ * Pass only the mutable fields: { firstName, lastName, phone, gender }.
+ * Persists the returned user so the rest of the app picks up the change.
+ */
+export const updateProfile = async (payload) => {
+  const response = await api.put(ENDPOINTS.updateProfile(), payload);
+  if (response?.success && response.user) {
+    await storage.saveUser(response.user);
+  }
+  return response;
+};
+
+/**
+ * Best-effort logout: try to notify the backend, then ALWAYS clear local
+ * storage. We never want the user to be stuck logged-in because of a
+ * network failure.
+ */
 export const logout = async () => {
   try {
-    const response = await api.post('/api/auth/logout');
-    await storage.clearAll();
-    return response;
-  } catch (error) {
-    // Even if API logout fails, we clear local storage
-    await storage.clearAll();
-    throw error;
+    await api.post(ENDPOINTS.authLogout());
+  } catch {
+    // swallow — we'll still clear local state
   }
+  await storage.clearAll();
 };

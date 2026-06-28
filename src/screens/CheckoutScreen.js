@@ -1,155 +1,112 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
-  ActivityIndicator,
   StatusBar,
   KeyboardAvoidingView,
-  Platform
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+
+import { useAuth } from '../context/AuthContext';
+import { useAddress } from '../context/AddressContext';
+import { useToast } from '../context/ToastContext';
+import { useT } from '../i18n/useT';
+import { COLORS } from '../constants/colors';
+import { formatINR, computeBookingTotal } from '../utils/currency';
+import { mapService } from '../utils/mappers';
+
+import Button from '../components/common/Button';
+import DateStrip from '../components/booking/DateStrip';
+import TimeSlotPicker from '../components/booking/TimeSlotPicker';
+import AddressCard from '../components/address/AddressCard';
+import { ScreenContainer, ScreenHeader } from '../components/layout/ScreenContainer';
+
 import { bookingService } from '../services/bookingService';
-import { storage } from '../services/storageService';
-import { primaryColor } from '../constants/color';
 import { getCurrentLocation } from '../services/locationService';
-import { addressService } from '../services/addressService';
-
-const formatDateKey = (date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
-};
 
 export default function CheckoutScreen({ route, navigation }) {
-  const service = route.params?.service;
+  const t = useT();
+  const toast = useToast();
+  const { user } = useAuth();
+  const { addresses, refresh, defaultAddress } = useAddress();
 
-  const [loading, setLoading] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(formatDateKey(new Date()));
+  const incoming = route.params?.service;
+  const service = incoming ? mapService(incoming) : null;
+
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  });
   const [selectedSlot, setSelectedSlot] = useState({ startTime: '10:00', endTime: '12:00' });
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [customerNotes, setCustomerNotes] = useState('');
   const [instructions, setInstructions] = useState('');
-  const [user, setUser] = useState(null);
-  const [location, setLocation] = useState(null);
-
-  const [addresses, setAddresses] = useState([]);
-  const [addressesLoading, setAddressesLoading] = useState(true);
   const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const loadAddresses = useCallback(async () => {
-    try {
-      setAddressesLoading(true);
-      const response = await addressService.getAddresses();
-      if (response.success) {
-        const list = response.addresses || response.data || [];
-        setAddresses(list);
-        // Prefer default, else first.
-        const def = list.find((a) => a.isDefault) || list[0];
-        setSelectedAddressId(def ? def._id : null);
-      }
-    } catch (error) {
-      console.warn('Failed to load addresses:', error.message);
-    } finally {
-      setAddressesLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      const userData = await storage.getUser();
-      setUser(userData);
-    };
-    fetchUser();
-  }, []);
-
-  // Refetch addresses each time the screen comes into focus (e.g. user comes back from ManageAddress).
+  // Refetch addresses every time the user lands on this screen.
   useFocusEffect(
     useCallback(() => {
-      loadAddresses();
-    }, [loadAddresses])
+      refresh();
+    }, [refresh]),
   );
 
-  const timeSlots = [
-    { startTime: '09:00', endTime: '11:00' },
-    { startTime: '11:00', endTime: '13:00' },
-    { startTime: '13:00', endTime: '15:00' },
-    { startTime: '15:00', endTime: '17:00' },
-    { startTime: '17:00', endTime: '19:00' },
-  ];
-
-  // Generate next 7 days
-  const dates = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    return formatDateKey(d);
-  });
+  // Default the selected address whenever the address list changes.
+  React.useEffect(() => {
+    if (!selectedAddressId && defaultAddress) {
+      setSelectedAddressId(defaultAddress.id);
+    }
+  }, [selectedAddressId, defaultAddress]);
 
   const handleBooking = async () => {
     if (!user) {
-      Alert.alert('Login Required', 'Please login to book a service', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Login', onPress: () => navigation.navigate('Login') }
-      ]);
+      toast.show(t('checkout.loginRequired'), 'warning');
       return;
     }
-
     if (!selectedAddressId) {
-      Alert.alert('Address Required', 'Please add a service address before booking.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Add Address', onPress: () => navigation.navigate('ManageAddress') }
-      ]);
+      toast.show(t('checkout.addressRequired'), 'warning');
       return;
     }
 
     setLoading(true);
     try {
-      const selectedAddress = addresses.find((a) => a._id === selectedAddressId);
-      const currentLocation = await getCurrentLocation();
+      const selectedAddress = addresses.find((a) => a.id === selectedAddressId);
 
-      // Try to find a vendor. If service has vendors array, use the first one.
-      // Otherwise check if there's a vendorId directly on the service.
-      let vendorId = null;
-
-      if (service?.vendor?._id) {
-        vendorId = service.vendor._id;
-      }
-      else if (service?.vendorId) {
-        vendorId = service.vendorId._id || service.vendorId;
-      }
-      else if (service?.vendors?.length > 0) {
-        vendorId =
-          service.vendors[0]?.vendorId?._id ||
-          service.vendors[0]?.vendorId;
-      }
-
-      console.log('Vendor ID:', vendorId);
+      // Resolve a vendorId — backend requires it.
+      const vendorId =
+        incoming?.vendor?._id ||
+        incoming?.vendorId?._id ||
+        incoming?.vendorId ||
+        incoming?.vendors?.[0]?.vendorId?._id ||
+        incoming?.vendors?.[0]?.vendorId ||
+        null;
 
       if (!vendorId) {
-        // For demo purposes, if no vendor, we might use a dummy one or show error
-        // But usually services from API should have vendors
-        console.log(
-          'SERVICE DATA',
-          JSON.stringify(service, null, 2)
-        );
-        Alert.alert('No Professional Available', 'We couldn\'t find a professional for this service in your area right now.');
+        toast.show(t('checkout.noProfessional'), 'error');
         setLoading(false);
         return;
       }
 
-      // Combine date and time for bookingDate as required by some APIs (though request body example shows just date)
-      // The example shows: "bookingDate": "2026-06-01"
+      let coords = { latitude: null, longitude: null };
+      try {
+        const loc = await getCurrentLocation();
+        coords = { latitude: loc.latitude, longitude: loc.longitude };
+      } catch {
+        // Non-fatal — backend should accept missing coords if address already has them.
+      }
 
-      const bookingData = {
-        serviceId: service._id,
-        vendorId: vendorId,
+      const payload = {
+        serviceId: service.id,
+        vendorId,
         bookingDate: selectedDate,
         timeSlot: selectedSlot,
         serviceAddress: {
@@ -158,39 +115,23 @@ export default function CheckoutScreen({ route, navigation }) {
           city: selectedAddress.city,
           state: selectedAddress.state,
           pincode: selectedAddress.pincode,
-
-          latitude: currentLocation.latitude,
-          longitude: currentLocation.longitude,
-
-          instructions: instructions
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          instructions,
         },
-        paymentMethod: paymentMethod,
-        customerNotes: customerNotes
+        paymentMethod,
+        customerNotes,
       };
-      console.log(
-        'BOOKING PAYLOAD',
-        JSON.stringify(bookingData, null, 2)
-      );
-      console.log(
-        'Service  Details',
-        JSON.stringify(service, null, 2)
-      );
 
-      const response = await bookingService.createBooking(bookingData);
-
-
-      if (response.success) {
-        Alert.alert(
-          'Booking Successful',
-          'Your service has been booked successfully!',
-          [{ text: 'View Bookings', onPress: () => navigation.navigate('Main', { screen: 'Bookings' }) }]
-        );
+      const response = await bookingService.createBooking(payload);
+      if (response?.success) {
+        toast.show(t('checkout.bookingSuccessMessage'), 'success');
+        navigation.navigate('Main', { screen: 'Bookings' });
       } else {
-        Alert.alert('Booking Failed', response.message || 'Something went wrong');
+        toast.show(response?.message || t('errors.failedToSave'), 'error');
       }
-    } catch (error) {
-      console.error('Booking Error:', error);
-      Alert.alert('Booking Failed', error.message || 'Something went wrong');
+    } catch (err) {
+      toast.show(err?.message || t('errors.failedToSave'), 'error');
     } finally {
       setLoading(false);
     }
@@ -198,31 +139,28 @@ export default function CheckoutScreen({ route, navigation }) {
 
   if (!service) {
     return (
-      <SafeAreaView className="flex-1 bg-white dark:bg-slate-900 items-center justify-center px-6" edges={['top']}>
-        <Text className="text-lg font-black text-gray-900 dark:text-white text-center">Service details are missing</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()} className="mt-4 bg-primaryColor px-6 py-3 rounded-2xl">
-          <Text className="text-white font-black">Go Back</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
+      <ScreenContainer bgClass="bg-white dark:bg-slate-900" edges={['top']}>
+        <View className="flex-1 items-center justify-center px-6">
+          <Text className="text-lg font-black text-gray-900 dark:text-white text-center">
+            {t('checkout.serviceDetailsMissing')}
+          </Text>
+          <Button
+            title={t('common.goBack')}
+            onPress={() => navigation.goBack()}
+            className="mt-4"
+          />
+        </View>
+      </ScreenContainer>
     );
   }
 
   const basePrice = service.discountedPrice || service.basePrice;
-  const platformFee = 49;
-  const tax = Math.round(basePrice * 0.18); // 18% GST
-  const totalAmount = basePrice + platformFee + tax;
+  const totalAmount = computeBookingTotal(basePrice);
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-slate-900" edges={['top']}>
+    <ScreenContainer bgClass="bg-white dark:bg-slate-900" edges={['top']}>
       <StatusBar barStyle="dark-content" />
-
-      {/* Header */}
-      <View className="flex-row items-center px-4 py-3 border-b border-gray-100 dark:border-slate-800">
-        <TouchableOpacity onPress={() => navigation.goBack()} className="p-2">
-          <Feather name="arrow-left" size={24} color={primaryColor} />
-        </TouchableOpacity>
-        <Text className="ml-2 text-xl font-black text-gray-900 dark:text-white">Review Booking</Text>
-      </View>
+      <ScreenHeader title={t('checkout.title')} onBack={() => navigation.goBack()} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -231,145 +169,80 @@ export default function CheckoutScreen({ route, navigation }) {
         <ScrollView className="flex-1 px-4 pt-4" showsVerticalScrollIndicator={false}>
           {/* Service Summary */}
           <View className="bg-gray-50 dark:bg-slate-800 rounded-3xl p-5 mb-6 flex-row items-center border border-gray-100 dark:border-slate-700">
-            <View className="bg-primaryColor/10 p-3 rounded-2xl">
-              <Feather name="shopping-bag" size={24} color={primaryColor} />
+            <View className="bg-primary/10 p-3 rounded-2xl">
+              <Feather name="shopping-bag" size={24} color={COLORS.primary} />
             </View>
             <View className="ml-4 flex-1">
               <Text className="text-gray-900 dark:text-white font-black text-lg">{service.name}</Text>
-              <Text className="text-gray-500 dark:text-gray-400 text-sm font-medium">{service.category?.name}</Text>
+              <Text className="text-gray-500 dark:text-gray-400 text-sm font-medium">
+                {service.categoryName}
+              </Text>
             </View>
-            <Text className="text-primaryColor font-black text-lg">₹{basePrice}</Text>
+            <Text className="text-primary font-black text-lg">{formatINR(basePrice)}</Text>
           </View>
 
           {/* Date Selection */}
           <View className="mb-6">
             <View className="flex-row items-center mb-3">
-              <Ionicons name="calendar-outline" size={20} color={primaryColor} />
-              <Text className="text-lg font-black text-gray-900 dark:text-white ml-2">Select Date</Text>
+              <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+              <Text className="text-lg font-black text-gray-900 dark:text-white ml-2">
+                {t('checkout.selectDate')}
+              </Text>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {dates.map((date) => {
-                const d = new Date(date);
-                const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
-                const dayNum = d.getDate();
-                const isSelected = selectedDate === date;
-
-                return (
-                  //        
-
-                  <TouchableOpacity
-                    key={date}
-                    onPress={() => {
-                      console.log('Pressed:', date);
-                      setSelectedDate(date);
-                    }}
-                    className={`w-16 h-20 rounded-2xl items-center justify-center mr-3 border ${isSelected
-                      ? 'bg-primaryColor border-primaryColor '
-                      : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700'
-                      }`}
-                  >
-                    <Text
-                      className={`text-[10px] font-black uppercase ${isSelected ? 'text-white/80' : 'text-gray-400'
-                        }`}
-                    >
-                      {dayName}
-                    </Text>
-
-                    <Text
-                      className={`text-xl font-black mt-1 ${isSelected ? 'text-white' : 'text-gray-900 dark:text-white'
-                        }`}
-                    >
-                      {dayNum}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+            <DateStrip value={selectedDate} onChange={setSelectedDate} />
           </View>
 
           {/* Time Slot Selection */}
           <View className="mb-6">
             <View className="flex-row items-center mb-3">
-              <Ionicons name="time-outline" size={20} color={primaryColor} />
-              <Text className="text-lg font-black text-gray-900 dark:text-white ml-2">Select Time Slot</Text>
+              <Ionicons name="time-outline" size={20} color={COLORS.primary} />
+              <Text className="text-lg font-black text-gray-900 dark:text-white ml-2">
+                {t('checkout.selectTimeSlot')}
+              </Text>
             </View>
-            <View className="flex-row flex-wrap">
-              {timeSlots.map((slot, index) => {
-                const isSelected = selectedSlot.startTime === slot.startTime;
-                return (
-                  <TouchableOpacity
-                    key={index}
-                    onPress={() => setSelectedSlot(slot)}
-                    className={`px-4 py-3 rounded-2xl mr-2 mb-2 border ${isSelected ? 'bg-primaryColor border-primaryColor  ' : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700'}`}
-                  >
-                    <Text className={`font-black text-sm ${isSelected ? 'text-white' : 'text-gray-600 dark:text-gray-300'}`}>
-                      {slot.startTime} - {slot.endTime}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            <TimeSlotPicker value={selectedSlot} onChange={setSelectedSlot} />
           </View>
 
           {/* Address Selection */}
           <View className="mb-6">
             <View className="flex-row justify-between items-center mb-3">
               <View className="flex-row items-center">
-                <Ionicons name="location-outline" size={20} color={primaryColor} />
-                <Text className="text-lg font-black text-gray-900 dark:text-white ml-2">Service Address</Text>
+                <Ionicons name="location-outline" size={20} color={COLORS.primary} />
+                <Text className="text-lg font-black text-gray-900 dark:text-white ml-2">
+                  {t('checkout.serviceAddress')}
+                </Text>
               </View>
               <TouchableOpacity onPress={() => navigation.navigate('ManageAddress')}>
-                <Text className="text-primaryColor font-black text-xs uppercase tracking-widest">Manage</Text>
+                <Text className="text-primary font-black text-xs uppercase tracking-widest">
+                  {t('common.manage')}
+                </Text>
               </TouchableOpacity>
             </View>
 
-            {addressesLoading ? (
-              <View className="py-6 items-center">
-                <ActivityIndicator color={primaryColor} />
-              </View>
-            ) : addresses.length === 0 ? (
+            {addresses.length === 0 ? (
               <TouchableOpacity
                 onPress={() => navigation.navigate('ManageAddress')}
                 className="p-5 rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-700 items-center"
               >
-                <Feather name="plus-circle" size={22} color={primaryColor} />
-                <Text className="text-primaryColor font-black mt-2 uppercase tracking-widest text-xs">
-                  Add a service address
+                <Feather name="plus-circle" size={22} color={COLORS.primary} />
+                <Text className="text-primary font-black mt-2 uppercase tracking-widest text-xs">
+                  {t('checkout.addAddress')}
                 </Text>
               </TouchableOpacity>
             ) : (
-              addresses.map((addr) => {
-                const isSelected = selectedAddressId === addr._id;
-                return (
-                  <TouchableOpacity
-                    key={addr._id}
-                    onPress={() => setSelectedAddressId(addr._id)}
-                    className={`p-4 rounded-2xl mb-3 border flex-row items-center ${isSelected ? 'bg-primaryColor/5 border-primaryColor   ' : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700'}`}
-                  >
-                    <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${isSelected ? 'border-primaryColor' : 'border-gray-300'}`}>
-                      {isSelected && <View className="w-3 h-3 bg-primaryColor rounded-full" />}
-                    </View>
-                    <View className="ml-4 flex-1">
-                      <View className="flex-row items-center">
-                        <Text className="font-black text-gray-900 dark:text-white text-base">{addr.label || 'Other'}</Text>
-                        {addr.isDefault && (
-                          <View className="ml-2 bg-primaryColor/10 px-2 py-0.5 rounded-md">
-                            <Text className="text-primaryColor text-[10px] font-bold uppercase">Default</Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text className="text-gray-500 dark:text-gray-400 text-xs mt-1 leading-4" numberOfLines={2}>
-                        {addr.street}, {addr.city}, {addr.state} - {addr.pincode}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
+              addresses.map((addr) => (
+                <AddressCard
+                  key={addr.id}
+                  address={{ ...addr, isSelected: selectedAddressId === addr.id }}
+                  variant="select"
+                  onPress={() => setSelectedAddressId(addr.id)}
+                />
+              ))
             )}
 
             <TextInput
-              placeholder="Delivery instructions (e.g. Ring the bell twice)"
-              placeholderTextColor="#9CA3AF"
+              placeholder={t('checkout.instructionsPlaceholder')}
+              placeholderTextColor={COLORS.placeholder}
               value={instructions}
               onChangeText={setInstructions}
               className="bg-gray-50 dark:bg-slate-800 p-4 rounded-2xl text-gray-900 dark:text-white border border-gray-100 dark:border-slate-700 mt-1"
@@ -379,25 +252,35 @@ export default function CheckoutScreen({ route, navigation }) {
           {/* Payment Method */}
           <View className="mb-6">
             <View className="flex-row items-center mb-3">
-              <Ionicons name="card-outline" size={20} color={primaryColor} />
-              <Text className="text-lg font-black text-gray-900 dark:text-white ml-2">Payment Method</Text>
+              <Ionicons name="card-outline" size={20} color={COLORS.primary} />
+              <Text className="text-lg font-black text-gray-900 dark:text-white ml-2">
+                {t('checkout.paymentMethod')}
+              </Text>
             </View>
             <View className="flex-row space-x-3">
               {[
-                { id: 'cash', label: 'Cash', icon: 'cash-outline' },
-                { id: 'online', label: 'Online', icon: 'card-outline' }
+                { id: 'cash', label: t('checkout.cash'), icon: 'cash-outline' },
+                { id: 'online', label: t('checkout.online'), icon: 'card-outline' },
               ].map((method) => (
                 <TouchableOpacity
                   key={method.id}
                   onPress={() => setPaymentMethod(method.id)}
-                  className={`flex-1 flex-row items-center justify-center p-4 rounded-2xl border ${paymentMethod === method.id ? 'bg-primaryColor border-primaryColor  ' : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700'}`}
+                  className={`flex-1 flex-row items-center justify-center p-4 rounded-2xl border ${
+                    paymentMethod === method.id
+                      ? 'bg-primary border-primary'
+                      : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700'
+                  }`}
                 >
                   <Ionicons
                     name={method.icon}
                     size={20}
-                    color={paymentMethod === method.id ? 'white' : '#9CA3AF'}
+                    color={paymentMethod === method.id ? 'white' : COLORS.textSubtle}
                   />
-                  <Text className={`ml-2 font-black ${paymentMethod === method.id ? 'text-white' : 'text-gray-500'}`}>
+                  <Text
+                    className={`ml-2 font-black ${
+                      paymentMethod === method.id ? 'text-white' : 'text-gray-500'
+                    }`}
+                  >
                     {method.label}
                   </Text>
                 </TouchableOpacity>
@@ -408,12 +291,14 @@ export default function CheckoutScreen({ route, navigation }) {
           {/* Additional Notes */}
           <View className="mb-6">
             <View className="flex-row items-center mb-3">
-              <Ionicons name="chatbubble-outline" size={20} color={primaryColor} />
-              <Text className="text-lg font-black text-gray-900 dark:text-white ml-2">Notes for Professional</Text>
+              <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
+              <Text className="text-lg font-black text-gray-900 dark:text-white ml-2">
+                {t('checkout.notesForProfessional')}
+              </Text>
             </View>
             <TextInput
-              placeholder="Any special instructions for the professional?"
-              placeholderTextColor="#9CA3AF"
+              placeholder={t('checkout.notesPlaceholder')}
+              placeholderTextColor={COLORS.placeholder}
               multiline
               numberOfLines={3}
               value={customerNotes}
@@ -425,23 +310,37 @@ export default function CheckoutScreen({ route, navigation }) {
 
           {/* Price Breakdown */}
           <View className="bg-gray-50 dark:bg-slate-800 rounded-3xl p-6 mb-10 border border-gray-100 dark:border-slate-700">
-            <Text className="text-lg font-black text-gray-900 dark:text-white mb-4">Price Details</Text>
+            <Text className="text-lg font-black text-gray-900 dark:text-white mb-4">
+              {t('checkout.priceDetails')}
+            </Text>
             <View className="flex-row justify-between mb-2">
-              <Text className="text-gray-500 dark:text-gray-400 font-medium">Service Base Price</Text>
-              <Text className="text-gray-900 dark:text-white font-bold">₹{basePrice}</Text>
+              <Text className="text-gray-500 dark:text-gray-400 font-medium">
+                {t('checkout.serviceBasePrice')}
+              </Text>
+              <Text className="text-gray-900 dark:text-white font-bold">{formatINR(basePrice)}</Text>
             </View>
             <View className="flex-row justify-between mb-2">
-              <Text className="text-gray-500 dark:text-gray-400 font-medium">Platform Fee</Text>
-              <Text className="text-gray-900 dark:text-white font-bold">₹{platformFee}</Text>
+              <Text className="text-gray-500 dark:text-gray-400 font-medium">
+                {t('checkout.platformFee')}
+              </Text>
+              <Text className="text-gray-900 dark:text-white font-bold">
+                {formatINR(49)}
+              </Text>
             </View>
             <View className="flex-row justify-between mb-4">
-              <Text className="text-gray-500 dark:text-gray-400 font-medium">Tax & GST</Text>
-              <Text className="text-gray-900 dark:text-white font-bold">₹{tax}</Text>
+              <Text className="text-gray-500 dark:text-gray-400 font-medium">
+                {t('checkout.taxGst')}
+              </Text>
+              <Text className="text-gray-900 dark:text-white font-bold">
+                {formatINR(Math.round(basePrice * 0.18))}
+              </Text>
             </View>
             <View className="h-[1px] bg-gray-200 dark:bg-slate-700 mb-4" />
             <View className="flex-row justify-between">
-              <Text className="text-lg font-black text-gray-900 dark:text-white">Total Amount</Text>
-              <Text className="text-xl font-black text-primaryColor">₹{totalAmount}</Text>
+              <Text className="text-lg font-black text-gray-900 dark:text-white">
+                {t('checkout.totalAmount')}
+              </Text>
+              <Text className="text-xl font-black text-primary">{formatINR(totalAmount)}</Text>
             </View>
           </View>
 
@@ -449,21 +348,14 @@ export default function CheckoutScreen({ route, navigation }) {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Footer Button */}
+      {/* Footer */}
       <View className="p-6 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800">
-        <TouchableOpacity
+        <Button
+          title={t('checkout.confirmAndPay', { amount: formatINR(totalAmount) })}
           onPress={handleBooking}
-          disabled={loading}
-          activeOpacity={0.8}
-          className={`py-4 rounded-2xl items-center shadow-lg ${loading ? 'bg-gray-300' : 'bg-primaryColor  '}`}
-        >
-          {loading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text className="text-white font-black text-lg">Confirm & Pay ₹{totalAmount}</Text>
-          )}
-        </TouchableOpacity>
+          loading={loading}
+        />
       </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }

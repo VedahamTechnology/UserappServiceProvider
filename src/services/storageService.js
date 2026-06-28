@@ -1,53 +1,53 @@
 import * as SecureStore from 'expo-secure-store';
 
-const TOKEN_KEY = 'accessToken';
-const USER_KEY = 'userData';
+/**
+ * Centralized SecureStore keys. Avoid magic strings scattered across the app.
+ */
+export const STORAGE_KEYS = {
+  token: 'accessToken',
+  user: 'userData',
+  locale: 'app.locale',
+  theme: 'app.theme',
+};
+
+const safeSet = async (key, value) => {
+  try { await SecureStore.setItemAsync(key, value); }
+  catch (e) { console.error(`[storage] failed to set ${key}`, e); }
+};
+
+const safeGet = async (key) => {
+  try { return await SecureStore.getItemAsync(key); }
+  catch (e) {
+    console.error(`[storage] failed to get ${key}`, e);
+    return null;
+  }
+};
+
+const safeDelete = async (key) => {
+  try { await SecureStore.deleteItemAsync(key); }
+  catch (e) { console.error(`[storage] failed to delete ${key}`, e); }
+};
 
 export const storage = {
-  saveToken: async (token) => {
-    try {
-      await SecureStore.setItemAsync(TOKEN_KEY, token);
-    } catch (e) {
-      console.error('Error saving token', e);
-    }
-  },
+  saveToken: (token) => safeSet(STORAGE_KEYS.token, token),
+  getToken: () => safeGet(STORAGE_KEYS.token),
 
-  getToken: async () => {
-    try {
-      return await SecureStore.getItemAsync(TOKEN_KEY);
-    } catch (e) {
-      console.error('Error getting token', e);
-      return null;
-    }
-  },
-
-  saveUser: async (user) => {
-    try {
-      // SecureStore has a 2048 byte limit. 
-      // If user data is too large, this might fail.
-      const userStr = JSON.stringify(user);
-      await SecureStore.setItemAsync(USER_KEY, userStr);
-    } catch (e) {
-      console.error('Error saving user data', e);
-    }
-  },
-
+  saveUser: (user) => safeSet(STORAGE_KEYS.user, JSON.stringify(user)),
   getUser: async () => {
-    try {
-      const user = await SecureStore.getItemAsync(USER_KEY);
-      return user ? JSON.parse(user) : null;
-    } catch (e) {
-      console.error('Error getting user data', e);
-      return null;
-    }
+    const raw = await safeGet(STORAGE_KEYS.user);
+    return raw ? JSON.parse(raw) : null;
   },
+
+  saveLocale: (locale) => safeSet(STORAGE_KEYS.locale, locale),
+  getLocale: () => safeGet(STORAGE_KEYS.locale),
+
+  saveTheme: (theme) => safeSet(STORAGE_KEYS.theme, theme),
+  getTheme: () => safeGet(STORAGE_KEYS.theme),
 
   clearAll: async () => {
-    try {
-      await SecureStore.deleteItemAsync(TOKEN_KEY);
-      await SecureStore.deleteItemAsync(USER_KEY);
-    } catch (e) {
-      console.error('Error clearing storage', e);
-    }
-  }
+    await Promise.all([
+      safeDelete(STORAGE_KEYS.token),
+      safeDelete(STORAGE_KEYS.user),
+    ]);
+  },
 };

@@ -1,12 +1,6 @@
-import { api } from './api';
+import { api } from './api/client';
+import { ENDPOINTS } from './api/endpoints';
 
 export const categoryService = {
-  getCategories: async () => {
-    try {
-      const response = await api.get('/api/vendor/services/browse/categories');
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
+  getCategories: () => api.get(ENDPOINTS.categories()),
 };

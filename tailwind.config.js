@@ -7,12 +7,14 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        primary: '#043A75',
         primaryColor: '#043A75',
-        primary: '#2563EB',
+        primaryRgb: '4, 58, 117',
         secondary: '#10B981',
+        accent: '#F59E0B',
+        danger: '#EF4444',
       },
     },
-    
   },
   plugins: [],
-}
+};

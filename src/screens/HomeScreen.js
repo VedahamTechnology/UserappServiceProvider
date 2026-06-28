@@ -1,216 +1,183 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  ScrollView, 
-  TouchableOpacity, 
-  TextInput, 
+import React, { useState, useRef, useCallback } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
   StatusBar,
   Dimensions,
   FlatList,
-  ActivityIndicator,
   RefreshControl,
-  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
+
+import { useT } from '../i18n/useT';
+import { useToast } from '../context/ToastContext';
+import { useAddress } from '../context/AddressContext';
+import { COLORS } from '../constants/colors';
+import { extractList, mapService } from '../utils/mappers';
+import { useFocusRefresh } from '../hooks/useFocusRefresh';
+
+import PromoSlide from '../components/service/PromoSlide';
+import CategoryTile from '../components/service/CategoryTile';
+import ServiceCard from '../components/service/ServiceCard';
+import LoadingView from '../components/feedback/LoadingView';
+import ErrorState from '../components/feedback/ErrorState';
+
 import { categoryService } from '../services/categoryService';
 import { serviceService } from '../services/serviceService';
 import { notificationService } from '../services/notificationService';
-import { primaryColor } from '../constants/color';
 import { getCurrentLocation } from '../services/locationService';
+
 const { width } = Dimensions.get('window');
 
+/**
+ * Promo slider data. Stays in the screen because it has no backend yet — once
+ * the API exposes `/promotions`, swap this for a fetched list.
+ */
 const SLIDER_DATA = [
-  {
-    id: '1',
-    title: 'Home Cleaning',
-    subtitle: 'Up to 50% Off',
-    color: primaryColor,
-    icon: 'home'
-  },
-  {
-    id: '2',
-    title: 'AC Service',
-    subtitle: 'Starting at ₹499',
-    color: '#4F46E5',
-    icon: 'thermometer'
-  },
-  {
-    id: '3',
-    title: 'Plumbing Work',
-    subtitle: 'Expert Technicians',
-    color: '#10B981',
-    icon: 'construct'
-  }
+  { id: '1', title: 'Home Cleaning', subtitle: 'Up to 50% Off', color: COLORS.primary, icon: 'home' },
+  { id: '2', title: 'AC Service', subtitle: 'Starting at ₹499', color: '#4F46E5', icon: 'thermometer' },
+  { id: '3', title: 'Plumbing Work', subtitle: 'Expert Technicians', color: '#10B981', icon: 'construct' },
 ];
 
 export default function HomeScreen({ navigation }) {
+  const t = useT();
+  const toast = useToast();
+  const { defaultAddress } = useAddress();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSlide, setActiveSlide] = useState(0);
+
   const [categories, setCategories] = useState([]);
   const [services, setServices] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
- const [location, setLocation] = useState(null);
 
-   useEffect(() => {
-  const loadLocation = async () => {
-    try {
-      const locationData = await getCurrentLocation();
-
-      console.log(locationData.latitude);
-      console.log(locationData.longitude);
-
-      setLocation(locationData.shortAddress);
-    } catch (error) {
-      console.log(error.message);
-    }
-  };
-
-  loadLocation();
-}, []);
-  const onViewableItemsChanged = useRef(({ viewableItems }) => {
-    if (viewableItems.length > 0) {
-      setActiveSlide(viewableItems[0].index);
-    }
-  }).current;
-
-  const fetchData = useCallback(async (isRefreshing = false) => {
-    if (isRefreshing) setRefreshing(true);
+  const fetchData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
     else setLoading(true);
-
+    setError(null);
     try {
-      const [catResponse, servResponse, unreadResponse] = await Promise.all([
+      const [catRes, servRes, unreadRes] = await Promise.all([
         categoryService.getCategories(),
         serviceService.getServices({ limit: 6 }),
-        notificationService.getUnreadCount()
+        notificationService.getUnreadCount().catch(() => ({ success: false, data: { unreadCount: 0 } })),
       ]);
 
-      if (catResponse.success) {
-        setCategories(catResponse.data || []);
+      if (catRes?.success) {
+        setCategories(extractList(catRes, 'categories', 'data'));
       }
-      if (servResponse.success) {
-        setServices(servResponse.data || []);
+      if (servRes?.success) {
+        setServices(extractList(servRes, 'services', 'data').map(mapService));
       }
-      if (unreadResponse.success) {
-        setUnreadCount(unreadResponse.data?.unreadCount || 0);
+      if (unreadRes?.success) {
+        setUnreadCount(unreadRes?.data?.unreadCount || 0);
       }
-      // console.log('Categories:', catResponse.data);
-      // console.log('Services:', servResponse.data);
-      console.log('Unread Notifications:', unreadResponse.data?.unreadCount);
-    } catch (error) {
-      console.error('Error fetching data:', error);
+    } catch (e) {
+      setError(e);
+      toast.show(e?.message || t('errors.failedToFetch'), 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [t, toast]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useFocusRefresh(fetchData);
 
-  const onRefresh = useCallback(() => {
-    fetchData(true);
-  }, [fetchData]);
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    if (viewableItems.length > 0) setActiveSlide(viewableItems[0].index);
+  }).current;
 
   const renderSliderItem = ({ item }) => (
-    <View style={{ width: width - 32 }} className="mr-4">
-      <TouchableOpacity 
-        activeOpacity={0.9}
-        style={{ backgroundColor: item.color }}
-        className="h-44 rounded-3xl p-6 justify-between shadow-lg overflow-hidden"
-      >
-        <View className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white/10" />
-        <View className="absolute -left-5 -bottom-5 w-24 h-24 rounded-full bg-black/5" />
-        
-        <View>
-          <Text className="text-white/80 font-bold uppercase tracking-widest text-[10px]">Special Offer</Text>
-          <Text className="text-white text-3xl font-black mt-1">{item.title}</Text>
-          <Text className="text-white/90 text-lg font-bold">{item.subtitle}</Text>
-        </View>
-
-        <View className="bg-white px-5 py-2 rounded-xl self-start">
-          <Text style={{ color: item.color }} className="font-bold text-sm">Book Now</Text>
-        </View>
-
-        <View className="absolute right-6 bottom-6">
-          <Ionicons name={item.icon} size={60} color="rgba(255,255,255,0.2)" />
-        </View>
-      </TouchableOpacity>
-    </View>
+    <PromoSlide item={item} onPress={() => navigation.navigate('ServiceList')} />
   );
+
+  const addressLabel =
+    defaultAddress?.street ||
+    defaultAddress?.city ||
+    t('home.locationPlaceholder');
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-slate-900" edges={['top']}>
       <StatusBar barStyle="dark-content" />
-      
-      {/* Top Header: Brand & Notification */}
+
+      {/* Top Header */}
       <View className="px-4 py-2 flex-row justify-between items-center">
-        <Text className="text-2xl font-black text-primaryColor tracking-tighter">
-          HomeStr
+        <Text className="text-2xl font-black text-primary tracking-tighter">
+          {t('home.brand')}
         </Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => navigation.navigate('Notifications')}
           className="p-2 bg-gray-50 dark:bg-slate-800 rounded-full relative"
         >
-          <Feather name="bell" size={20} color="#6B7280" />
-          {unreadCount > 0 && (
-            <View className="absolute top-1.5 right-1.5 w-4 h-4 bg-primaryColor rounded-full items-center justify-center border-2 border-white">
-              <Text className="text-[8px] text-white font-black">{unreadCount > 9 ? '9+' : unreadCount}</Text>
+          <Feather name="bell" size={20} color={COLORS.textSubtle} />
+          {unreadCount > 0 ? (
+            <View className="absolute top-1.5 right-1.5 w-4 h-4 bg-primary rounded-full items-center justify-center border-2 border-white">
+              <Text className="text-[8px] text-white font-black">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </Text>
             </View>
-          )}
+          ) : null}
         </TouchableOpacity>
       </View>
 
       {/* Location Selector */}
       <View className="px-4 py-2 flex-row items-center justify-between">
         <View className="flex-row items-center flex-1">
-          <View className="bg-primaryColor/10 p-2 rounded-full mr-3">
-            <Ionicons name="location" size={18} color={primaryColor} />
+          <View className="bg-primary/10 p-2 rounded-full mr-3">
+            <Feather name="map-pin" size={18} color={COLORS.primary} />
           </View>
-          <View>
+          <View className="flex-1">
             <Text className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-widest">
-              Current Location
+              {t('home.currentLocation')}
             </Text>
             <Text className="text-sm font-bold text-gray-900 dark:text-white" numberOfLines={1}>
-              {location}
+              {addressLabel}
             </Text>
           </View>
         </View>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => navigation.navigate('ManageAddress')}
           className="px-3 py-1.5 bg-gray-100 dark:bg-slate-800 rounded-lg"
         >
-          <Text className="text-primaryColor text-xs font-bold">Change</Text>
+          <Text className="text-primary text-xs font-bold">{t('common.change')}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Search Bar */}
       <View className="px-4 py-4">
         <View className="flex-row items-center bg-gray-50 dark:bg-slate-800 px-4 py-3 rounded-2xl border border-gray-100 dark:border-slate-700">
-          <Feather name="search" size={20} color="#9CA3AF" />
+          <Feather name="search" size={20} color={COLORS.textSubtle} />
           <TextInput
-            placeholder="Search for services..."
-            placeholderTextColor="#9CA3AF"
+            placeholder={t('home.searchPlaceholder')}
+            placeholderTextColor={COLORS.placeholder}
             className="flex-1 ml-3 text-gray-900 dark:text-white font-medium"
             value={searchQuery}
             onChangeText={setSearchQuery}
-            onSubmitEditing={() => navigation.navigate('ServiceList', { searchInitial: searchQuery })}
+            onSubmitEditing={() =>
+              navigation.navigate('ServiceList', { searchInitial: searchQuery })
+            }
           />
-          <TouchableOpacity className="bg-primaryColor p-2 rounded-xl">
+          <TouchableOpacity className="bg-primary p-2 rounded-xl">
             <Feather name="sliders" size={16} color="white" />
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView 
-        className="flex-1" 
+      <ScrollView
+        className="flex-1"
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[primaryColor]} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchData(true)}
+            colors={[COLORS.primary]}
+          />
         }
         contentContainerStyle={{ paddingBottom: 20 }}
       >
@@ -219,7 +186,7 @@ export default function HomeScreen({ navigation }) {
           <FlatList
             data={SLIDER_DATA}
             renderItem={renderSliderItem}
-            keyExtractor={item => item.id}
+            keyExtractor={(item) => item.id}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
@@ -229,127 +196,77 @@ export default function HomeScreen({ navigation }) {
             onViewableItemsChanged={onViewableItemsChanged}
             viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
           />
-          
-          {/* Pagination Dots */}
           <View className="flex-row justify-center mt-4 space-x-2">
             {SLIDER_DATA.map((_, index) => (
-              <View 
+              <View
                 key={index}
-                className={`h-1.5 rounded-full ${activeSlide === index ? 'w-6 bg-primaryColor' : 'w-2 bg-gray-200 dark:bg-slate-700'}`}
+                className={`h-1.5 rounded-full ${
+                  activeSlide === index ? 'w-6 bg-primary' : 'w-2 bg-gray-200 dark:bg-slate-700'
+                }`}
               />
             ))}
           </View>
         </View>
 
-        {/* Categories Section */}
+        {/* Categories */}
         <View className="px-4 mt-8">
           <View className="flex-row justify-between items-center mb-6">
-            <Text className="text-xl font-black text-gray-900 dark:text-white">Categories</Text>
+            <Text className="text-xl font-black text-gray-900 dark:text-white">
+              {t('home.categories')}
+            </Text>
             <TouchableOpacity onPress={() => navigation.navigate('CategoryList')}>
-              <Text className="text-primaryColor font-bold">See All</Text>
+              <Text className="text-primary font-bold">{t('common.seeAll')}</Text>
             </TouchableOpacity>
           </View>
-          
+
           {loading && !refreshing ? (
-            <View className="py-10">
-              <ActivityIndicator size="large" color={primaryColor} />
-            </View>
+            <LoadingView />
+          ) : error ? (
+            <ErrorState message={error.message} onRetry={() => fetchData()} />
           ) : (
             <View className="flex-row flex-wrap justify-between">
               {categories.map((category) => (
-                <TouchableOpacity 
-                  key={category._id}
-                  className="w-[23%] items-center mb-6"
-                  activeOpacity={0.7}
-                  onPress={() => navigation.navigate('ServiceList', { categoryId: category._id, categoryName: category.name })}
-                >
-                  <View className="w-16 h-16 bg-gray-50 dark:bg-slate-800 rounded-2xl items-center justify-center mb-2 border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
-                    <Image 
-                      source={{ 
-                        uri: category.image && category.image.startsWith('http') 
-                          ? category.image 
-                          : 'https://cdn-icons-png.flaticon.com/512/10473/10473663.png' // Professional service placeholder
-                      }} 
-                      className="w-8 h-8"
-                      resizeMode="contain"
-                    />
-                  </View>
-                  <Text 
-                    className="text-[11px] font-bold text-gray-700 dark:text-gray-300 text-center"
-                    numberOfLines={1}
-                  >
-                    {category.name}
-                  </Text>
-                </TouchableOpacity>
+                <CategoryTile
+                  key={category._id || category.id}
+                  category={category}
+                  onPress={() =>
+                    navigation.navigate('ServiceList', {
+                      categoryId: category._id || category.id,
+                      categoryName: category.name,
+                    })
+                  }
+                />
               ))}
             </View>
           )}
         </View>
 
-        {/* Popular Services Section */}
+        {/* Popular Services */}
         <View className="px-4 mt-4">
           <View className="flex-row justify-between items-center mb-6">
-            <Text className="text-xl font-black text-gray-900 dark:text-white">Popular Services</Text>
+            <Text className="text-xl font-black text-gray-900 dark:text-white">
+              {t('home.popularServices')}
+            </Text>
             <TouchableOpacity onPress={() => navigation.navigate('ServiceList')}>
-              <Text className="text-primaryColor font-bold">View All</Text>
+              <Text className="text-primary font-bold">{t('common.viewAll')}</Text>
             </TouchableOpacity>
           </View>
 
           {loading && !refreshing ? (
-            <View className="py-10">
-              <ActivityIndicator size="large" color={primaryColor} />
-            </View>
+            <LoadingView />
           ) : (
-            <View className="space-y-4">
+            <View>
               {services.map((service) => (
-                <TouchableOpacity 
-                  key={service._id}
-                  className="bg-white dark:bg-slate-800 rounded-3xl p-4 flex-row border border-gray-100 dark:border-slate-700 shadow-sm mb-4"
-                  activeOpacity={0.7}
-                  onPress={() => navigation.navigate('ServiceDetail', { serviceId: service._id })}
-                >
-                  <Image 
-                    source={{ uri: service.image || 'https://via.placeholder.com/150' }} 
-                    className="w-24 h-24 rounded-2xl"
-                  />
-                  <View className="flex-1 ml-4 justify-between py-1">
-                    <View>
-                      <View className="flex-row justify-between items-start">
-                        <Text className="text-[10px] font-black text-primaryColor uppercase tracking-widest mb-1">
-                          {service.category?.name || 'Service'}
-                        </Text>
-                        <View className="flex-row items-center bg-yellow-50 px-2 py-0.5 rounded-lg">
-                          <Ionicons name="star" size={10} color="#F59E0B" />
-                          <Text className="text-[10px] font-black text-yellow-700 ml-1">4.5</Text>
-                        </View>
-                      </View>
-                      <Text className="text-base font-black text-gray-900 dark:text-white" numberOfLines={1}>
-                        {service.name}
-                      </Text>
-                      <Text className="text-xs text-gray-500 dark:text-gray-400 mt-1" numberOfLines={2}>
-                        {service.description}
-                      </Text>
-                    </View>
-                    
-                    <View className="flex-row justify-between items-center mt-2">
-                      <View className="flex-row items-baseline">
-                        <Text className="text-primaryColor font-black text-lg">₹{service.discountedPrice || service.basePrice}</Text>
-                        {service.discountedPrice > 0 && service.discountedPrice < service.basePrice && (
-                          <Text className="text-gray-400 text-[10px] font-bold line-through ml-2">₹{service.basePrice}</Text>
-                        )}
-                      </View>
-                      <View className="bg-primaryColor/10 px-3 py-1.5 rounded-xl">
-                        <Text className="text-primaryColor text-[10px] font-black">Book Now</Text>
-                      </View>
-                    </View>
-                  </View>
-                </TouchableOpacity>
+                <ServiceCard
+                  key={service.id}
+                  service={service}
+                  onPress={() => navigation.navigate('ServiceDetail', { serviceId: service.id })}
+                />
               ))}
             </View>
           )}
         </View>
       </ScrollView>
-
     </SafeAreaView>
   );
 }

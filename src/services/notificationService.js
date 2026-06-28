@@ -1,91 +1,22 @@
-import { api } from './api';
+import { api } from './api/client';
+import { ENDPOINTS, buildQuery } from './api/endpoints';
 
 export const notificationService = {
-  getNotifications: async (params = {}) => {
-    try {
-      const queryParams = new URLSearchParams();
-      if (params.page) queryParams.append('page', params.page);
-      if (params.limit) queryParams.append('limit', params.limit);
+  getNotifications: (params = {}) =>
+    api.get(ENDPOINTS.notifications(), { query: buildQuery(params) }),
 
-      const queryString = queryParams.toString();
-      const endpoint = `/api/notifications${queryString ? `?${queryString}` : ''}`;
-      
-      const response = await api.get(endpoint);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
+  getUnreadCount: () => api.get(ENDPOINTS.unreadCount()),
 
-  getUnreadCount: async () => {
-    try {
-      const response = await api.get('/api/notifications/unread/count');
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
+  getNotificationsByType: (type, params = {}) =>
+    api.get(ENDPOINTS.notificationsByType(type), { query: buildQuery(params) }),
 
-  getNotificationsByType: async (type, params = {}) => {
-    try {
-      const queryParams = new URLSearchParams();
-      if (params.page) queryParams.append('page', params.page);
-      if (params.limit) queryParams.append('limit', params.limit);
+  getPreferences: () => api.get(ENDPOINTS.notificationPreferences()),
 
-      const queryString = queryParams.toString();
-      const endpoint = `/api/notifications/type/${type}${queryString ? `?${queryString}` : ''}`;
-      
-      const response = await api.get(endpoint);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
+  markAsRead: (notificationId) => api.put(ENDPOINTS.markNotificationRead(notificationId), {}),
 
-  getPreferences: async () => {
-    try {
-      const response = await api.get('/api/notifications/preferences');
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
+  markAllAsRead: () => api.put(ENDPOINTS.markAllNotificationsRead(), {}),
 
-  markAsRead: async (notificationId) => {
-    try {
-      // Endpoint is PUT /api/notifications/:notificationId/read
-      // api.put isn't in api.js, let's check api.js content again
-      const response = await api.put(`/api/notifications/${notificationId}/read`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
+  deleteNotification: (notificationId) => api.delete(ENDPOINTS.deleteNotification(notificationId)),
 
-  markAllAsRead: async () => {
-    try {
-      const response = await api.put('/api/notifications/read/all');
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  deleteNotification: async (notificationId) => {
-    try {
-      const response = await api.delete(`/api/notifications/${notificationId}`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  clearAllNotifications: async () => {
-    try {
-      const response = await api.delete('/api/notifications');
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
+  clearAllNotifications: () => api.delete(ENDPOINTS.clearAllNotifications()),
 };
