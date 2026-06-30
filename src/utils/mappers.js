@@ -32,6 +32,23 @@ export const mapCategory = (raw) => ({
   description: raw.description || '',
 });
 
+/**
+ * Pick the first MongoId-shaped string from a value. Vendors can be
+ * represented as a populated object `{ _id }`, a bare string, or wrapped
+ * in a `vendorId` / `vendors[].vendorId` array — handle all three.
+ */
+const pickVendorId = (raw) => {
+  if (!raw) return null;
+  // Bare string id
+  if (typeof raw === 'string') return raw;
+  // Populated object
+  if (typeof raw === 'object') {
+    if (raw._id) return raw._id;
+    if (raw.id) return raw.id;
+  }
+  return null;
+};
+
 export const mapService = (raw) => ({
   id: raw._id || raw.id,
   name: raw.name || '',
@@ -44,6 +61,16 @@ export const mapService = (raw) => ({
   estimatedDuration: raw.estimatedDuration || 60,
   features: Array.isArray(raw.features) ? raw.features : [],
   rating: Number(raw.rating ?? 4.5),
+  // Preserve vendor info — required by CheckoutScreen to build the booking payload.
+  // The backend exposes this as `vendorId` (string or populated), `vendor`
+  // (populated object), or `vendors` (array of { vendorId }) depending on
+  // the endpoint and the service's state.
+  vendorId:
+    pickVendorId(raw.vendorId) ||
+    pickVendorId(raw.vendor) ||
+    pickVendorId(raw.vendors?.[0]?.vendorId) ||
+    null,
+  vendor: raw.vendor || null,
 });
 
 export const mapBooking = (raw) => ({

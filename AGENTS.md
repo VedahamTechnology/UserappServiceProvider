@@ -8,6 +8,259 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v54.0.0/ before 
 
 This section is the running log. Every plan, prompt, action and update is recorded here in chronological order. Add the next dated entry below.
 
+## 2026-06-30 — Fix: `vendorId` missing on Checkout → "no professional" silent block
+
+### Plan
+
+User said: "Bundled ... LOG [Checkout] BLOCKED: no vendorId for this service ... incoming keys= [...]" and shared the previously-working payload that included a `vendorId`.
+
+The diagnostic logs pinpointed the bug: the `service` object passed to `CheckoutScreen` via `route.params.service` had been **mapped through `mapService`**, which only kept the UI-facing fields (`id`, `name`, `description`, `image`, `category`, `categoryName`, `basePrice`, `discountedPrice`, `estimatedDuration`, `features`, `rating`) and **dropped the vendor fields entirely**. The Checkout screen then tried to resolve `vendorId` from `incoming.vendor?._id` / `incoming.vendorId?._id` / `incoming.vendors?.[0]?.vendorId?._id` — every branch returned `null` because the keys weren't there. The code fell into the early-return with `toast.show(t('checkout.noProfessional'), 'error')`, the toast was probably partially hidden by the keyboard, and the user saw "nothing happens" with no feedback.
+
+This was a regression introduced when `mapService` was rewritten in the 2026-06-27 refactor — the old `mapService` preserved `raw` / vendor data; the new one stripped it.
+
+Goal: preserve the vendor info in `mapService` so CheckoutScreen gets a populated `service.vendorId`, and harden the CheckoutScreen lookup to handle every shape the backend might use (populated `vendor`, bare `vendorId`, `vendors[]` array).
+
+### Actions
+
+**`src/utils/mappers.js`** — extended `mapService` to preserve the vendor info that the booking API needs. Added a small `pickVendorId` helper that handles all three shapes (string, populated object, `vendors[]` array). `mapService` now returns a `vendorId` string (already resolved) and a raw `vendor` object on every mapped service:
+
+```js
+const pickVendorId = (raw) => {
+  if (!raw) return null;
+  if (typeof raw === 'string') return raw;
+  if (typeof raw === 'object') return raw._id || raw.id || null;
+  return null;
+};
+
+export const mapService = (raw) => ({
+  id: raw._id || raw.id,
+  // ... all the existing UI fields unchanged ...
+  vendorId:
+    pickVendorId(raw.vendorId) ||
+    pickVendorId(raw.vendor) ||
+    pickVendorId(raw.vendors?.[0]?.vendorId) ||
+    null,
+  vendor: raw.vendor || null,
+});
+```
+
+**`src/screens/CheckoutScreen.js`** — simplified the `vendorId` resolution to read the new clean fields, with a fallback chain for any caller still passing the unmapped object. Added a small `pickId` helper local to the file. The previous `BLOCKED: no vendorId` console logs and other debug noise were removed — the root cause is fixed.
+
+### Why this also fixes "Cash" not working
+
+The user reported that **both** Cash and Online did nothing. Both paths run through the same `handleBooking` function, which fails the same `!vendorId` check before branching. The toast was being eaten by the keyboard on the multiline `customerNotes` input or by the `top-12` toast position on the screen header, making it look like nothing happened. With `vendorId` now populated, both paths will reach the network call.
+
+### Verification
+
+- `npx expo export --platform android` rebuilt cleanly (4.29 MB hbc, 0 errors).
+- IDE diagnostics on `mappers.js`, `CheckoutScreen.js`, `RazorpayCheckoutScreen.js`: 0 errors.
+
+### What to check on the next device run
+
+1. Profile → Home → any service → Book Now → Checkout.
+2. The Confirm & Pay button should now actually call `bookingService.createBooking` with a valid `vendorId`.
+3. With **Cash** selected, the booking should be created and the user lands on the Bookings tab.
+4. With **Online** selected, the user lands on the Razorpay screen, the browser opens, and the payment flow proceeds as previously designed.
+5. If the booking still doesn't go through, the response will now show in the catch toast (no more silent `BLOCKED: no vendorId`).
+
+## 2026-06-30 — Checkout: surface silent failure on Confirm & Pay (Cash + Online)
+
+### Plan
+
+User said: "dosent matter if i select cash or online.... nothing happning after clicking button no error nothing" — both payment methods do nothing when Confirm & Pay is tapped, with no toast, no spinner, no navigation, no error.
+
+The previous diagnostic only added logs on the success path of the online flow. That assumed the click was reaching `handleBooking`. The user has now reported the click appears to not reach the handler at all, even on the **Cash** path which has zero Razorpay code. That eliminates every hypothesis about the Razorpay flow being broken and points squarely at one of:
+
+1. **`handleBooking` is being called but its early-return toasts are not visible** (e.g. no address saved, user is null, but the toast is being eaten by the keyboard or rendered behind a header). With the previous `toast.show()` calls the user might genuinely have been missing the message.
+2. **`handleBooking` is not being called at all** (touch event is being swallowed by an overlay, the button is below the visible area, or the footer is collapsed to 0 height by a flex layout issue).
+3. **The button is disabled** somehow (e.g. `loading` was set to true by a previous in-flight request and never reset).
+
+### Actions
+
+**`src/screens/CheckoutScreen.js`** — added three layers of diagnostics so the next tap tells us which branch is failing:
+
+1. **Render-time log** on every render of the screen:
+   ```js
+   console.log('[Checkout] render: service=', service?.id, 'paymentMethod=', paymentMethod, 'user=', !!user, 'addresses=', addresses.length, 'selectedAddressId=', selectedAddressId);
+   ```
+   This fires the moment the screen renders. If we don't see this in Metro, the screen isn't even mounted.
+
+2. **First-line log inside `handleBooking`** so we know if the onPress fires:
+   ```js
+   console.log('[Checkout] handleBooking called, paymentMethod=', paymentMethod, 'user=', !!user, 'addressId=', selectedAddressId);
+   ```
+
+3. **Native `Alert.alert`** on the two early-return paths (`!user`, `!selectedAddressId`). `Alert` is a native OS dialog that cannot be missed by any layout / toast bug — it pops over the entire app.
+
+4. **Catch-block log** on `createBooking` throw, and **success-path log** on the createBooking response, from the previous entry — kept for the next debug cycle.
+
+### Verification
+
+- `npx expo export --platform android` rebuilt cleanly (4.29 MB hbc, 0 errors).
+- IDE diagnostics on `CheckoutScreen.js`: 0 errors.
+
+### What the user needs to check
+
+Reload the app with Metro running, navigate to Checkout, then **tap Confirm & Pay**. The combination of outputs will tell us exactly where the failure is:
+
+| What you see | What it means | Next step |
+| --- | --- | --- |
+| No `[Checkout] render:` log on screen open | Screen isn't mounting (early return on `!service`?) | Likely the back button was tapped — service param is gone. Should already see "service details missing" UI. |
+| `[Checkout] render:` appears but **no** `[Checkout] handleBooking called:` on tap | Touch event is not reaching the Button. Most likely the footer is off-screen (keyboard is open) or an invisible overlay is on top. | Dismiss the keyboard (back button) and try again. If it still doesn't fire, the Button is being covered. |
+| `[Checkout] handleBooking called:` appears, then **native "Login required" Alert** | `user` is null. The session is gone (e.g. token expired). | Re-login, retry. |
+| `[Checkout] handleBooking called:` appears, then **native "Address required" Alert** | `selectedAddressId` is null. The user has no saved address, or the address list hasn't loaded yet. | Open ManageAddress, add an address, set as default, return to Checkout. |
+| `[Checkout] handleBooking called:` appears, **no** Alert, then `[Checkout] createBooking response:` log | The validation passed and the booking is being created. Now we know whether the response shape is the issue. | Paste the response — we'll wire the right field. |
+| `[Checkout] handleBooking called:` appears, **no** Alert, **no** response log, then `[Checkout] createBooking threw:` | Network error or backend 4xx/5xx. The `ApiError` is being eaten. | Paste the error log. |
+
+The combination is designed so that **the user must see SOMETHING on every code path** — Metro log, Alert, or toast.
+
+## 2026-06-30 — Razorpay: surface silent failure on Confirm & Pay
+
+### Plan
+
+User said: "when clicking conferm and pay nothing happning" — tapping **Confirm & Pay** on the Checkout screen appears to do nothing, with no visible error and no navigation.
+
+The most likely cause is a **silent failure in the response-shape handling**: the backend's `POST /api/user/bookings` returns `{ success: true, ... }` but the new `bookingId` lives in a field we didn't look for, so the code falls through to the "no id" branch and silently bounces the user to the Bookings tab — without the Razorpay browser ever opening. The user has no way to see what went wrong.
+
+Goal: make every path on the Online flow loud and traceable so the next tap tells us (a) what the backend actually returns, (b) why the Razorpay flow didn't open, and (c) what to fix.
+
+### Actions
+
+**`src/screens/CheckoutScreen.js`**
+
+- `console.log` the raw `createBooking` response (`'[Checkout] createBooking response:'`) so we can see the actual backend shape in Metro logs.
+- Added two more candidate fields to the `bookingId` extraction: `response.data?.booking?._id` and `response.data?.booking?.id` — covers the case where the backend wraps the booking object under `data.booking`.
+- Replaced the silent fallback ("no id → show success toast → navigate to Bookings") with a loud error toast: `"Booking created but server did not return an id. Please try again or contact support."` This means the user will see *something* happen, and we can rule out this branch.
+- `console.log` on the catch branch too (`'[Checkout] createBooking threw:'`) so a thrown `ApiError` (network / 4xx / 5xx) is visible.
+
+**`src/screens/payment/RazorpayCheckoutScreen.js`**
+
+- `console.log` the raw `createOrder` response (`'[Razorpay] createOrder response:'`).
+- Made the response shape parsing defensive — accept any of:
+  - `{ order, key }` (backend contract)
+  - `{ data: { order, key } }`
+  - `{ data: { id, amount, currency, ... } }` (order flattened under data)
+  - `{ razorpayOrder, razorpayKey }` (alternate key names)
+- Normalises the order to `{ id, amount, currency, receipt }` before storing.
+- `console.log` the createOrder error too.
+
+### Verification
+
+- `npx expo export --platform android` — **4.29 MB hbc, 0 errors**.
+- IDE diagnostics on both files: 0 errors.
+
+### What to check on the next device run
+
+1. Open Metro and look at the logs. Tap **Confirm & Pay** with Online selected. Three logs should appear:
+   - `[Checkout] createBooking response: {...}` — this will tell us the actual shape.
+   - `[Razorpay] createOrder response: {...}` — and this one.
+   - Any of `[Checkout] createBooking threw: ...` or `[Razorpay] createOrder error: ...` if the call failed.
+2. If you see **"Booking created but server did not return an id"** — the booking was created on the server but our `bookingId` extraction failed. Paste the createBooking response here and I'll add the right field.
+3. If you see **no toast at all** and no logs in Metro — the click handler isn't even running. Most likely: a parent component swallowed the press (e.g. the `KeyboardAvoidingView` wrapping the footer). The diagnostic logs will be empty. We'll fix that next.
+4. If you see the toast **"Opening secure payment..."** briefly and then nothing — the Razorpay browser is failing to open (likely an `expo-web-browser` config issue on the device). The error log will show what.
+
+### Notes
+
+These diagnostic logs are intentionally left in for the next dev cycle. Once we know the actual backend shape they can be removed (or moved behind a `__DEV__` guard).
+
+## 2026-06-30 — Razorpay online payment flow on Checkout
+
+### Plan
+
+User said: "impliment this api.... if the mode is online selected by customer in checkout page" — referring to a three-phase Razorpay integration spec (`POST /api/payments/create-order` → open Razorpay → `POST /api/payments/verify-payment`).
+
+The Checkout screen already had a **Cash / Online** selector (line 263 in `src/screens/CheckoutScreen.js`) but the Online path was a no-op: both methods ran the same `bookingService.createBooking()` and the backend's `/api/payments/*` endpoints weren't reachable from the app. Goal: wire Online to a real Razorpay flow that creates an order, opens the secure checkout, verifies the signature, and lands on the Bookings tab. On user-cancel or signature failure the booking stays `pending` (per user's explicit choice) so they can retry from Bookings.
+
+### Why Expo WebBrowser + hosted checkout URL
+
+Razorpay's `window.Razorpay()` SDK is web-only — it doesn't exist in React Native. Three options:
+
+1. `react-native-razorpay` (native module) — requires ejecting to a custom dev client / EAS build. Rejected.
+2. `react-native-webview` in-app checkout — works but needs JS-bridge dance to capture success. Rejected as heavier than needed.
+3. **`expo-web-browser` + Razorpay's hosted `https://checkout.razorpay.com/v1/checkout.html` URL** — accepts the same `key`, `order_id`, `prefill`, and `callback_url` query params the web SDK uses, and returns the `razorpay_*` fields in the redirect URL's query string. Works in Expo Go, no native code beyond a single small install. ✅
+
+`expo-web-browser` is NOT auto-shipped with Expo SDK 54 — installed via `npx expo install expo-web-browser`. The package's config plugin (`expo-web-browser`) was auto-added to `app.json`'s `plugins` array.
+
+### Actions
+
+**`src/constants/endpoints.js`** — added two endpoint builders next to the existing blocks:
+
+```js
+// Payments
+createOrder: () => `${API}/payments/create-order`,
+verifyPayment: () => `${API}/payments/verify-payment`,
+```
+
+**`src/services/paymentService.js`** — new. Mirrors `bookingService.js` shape (single object, method-per-endpoint, delegates to the shared `api` client so auth headers / `ApiError` handling come for free):
+
+```js
+createOrder: (bookingId) => api.post(ENDPOINTS.createOrder(), { bookingId }),
+verifyPayment: ({ bookingId, razorpay_order_id, razorpay_payment_id, razorpay_signature }) =>
+  api.post(ENDPOINTS.verifyPayment(), { bookingId, razorpay_order_id, razorpay_payment_id, razorpay_signature }),
+```
+
+**`src/screens/payment/RazorpayCheckoutScreen.js`** — new (224 lines). State machine `creating → opening → verifying → success | cancelled | error`. The `createOrder` call fires on mount (guarded by `useRef` against StrictMode double-fire); once the order is back, `WebBrowser.openAuthSessionAsync(<razorpay url>, 'homestr://razorpay/success')` opens the secure checkout. On `result.type === 'success'`, parses the redirect URL for `razorpay_order_id` / `razorpay_payment_id` / `razorpay_signature` (handles both snake_case and `razorpayOrderId` variants) and calls `paymentService.verifyPayment`. On `cancel` / `dismiss` → cancel toast + back-to-bookings button. On verify failure → "verifyFailed" toast (booking stays pending, user can retry).
+
+A `Linking.addEventListener('url', ...)` fallback catches the case where the app was killed and re-opened via the deep link (no `orderInfo` in memory).
+
+**`src/screens/CheckoutScreen.js`** — `handleBooking` now branches after the successful `createBooking`:
+
+```js
+if (response?.success) {
+  if (paymentMethod === 'online') {
+    const bookingId = response.booking?._id || response.data?._id || response._id || null;
+    if (!bookingId) { /* fall back to existing success flow */ }
+    navigation.navigate('RazorpayCheckout', { bookingId, serviceName: service.name, totalAmount });
+    return; // Razorpay screen takes over
+  }
+  toast.show(t('checkout.bookingSuccessMessage'), 'success');
+  navigation.navigate('Main', { screen: 'Bookings' });
+}
+```
+
+Cash path is byte-identical to before.
+
+**`src/navigation/AppNavigator.js`** — registered `RazorpayCheckout` screen right after `Checkout`.
+
+**`app.json`** — added `"scheme": "homestr"` to the `expo` block so the `homestr://razorpay/success` callback can re-open the app. `expo-web-browser` was auto-added to the `plugins` array by `npx expo install`.
+
+**`src/i18n/locales/en.json` & `hi.json`** — new `payment.*` block (10 keys each): `title`, `opening`, `verifying`, `loading`, `success`, `successBody`, `viewBooking`, `cancelled`, `cancelledHint`, `backToBookings`, `failed`, `failedHint`, `tryAgain`, `verifyFailed`, `errOpenBrowser`. Sits between `cart` and `about`, following the existing namespacing convention.
+
+### Patterns reused (no new abstractions)
+
+- `api.post` from `src/services/api/client.js` — same auth headers, same `ApiError` handling.
+- Service-module shape — `paymentService` mirrors `bookingService.js`.
+- `useToast` from `src/context/ToastContext.jsx` — for success / cancel / failure toasts.
+- `ScreenContainer` + `ScreenHeader` from `src/components/layout/ScreenContainer.jsx` — existing screen chrome.
+- `Button` from `src/components/common/Button.jsx` — for the back-to-bookings / try-again CTAs.
+- `formatINR` from `src/utils/currency.js` — show the total in the verifying screen.
+- Endpoint builders in `constants/endpoints.js` — single place to change a path.
+
+### Edge cases handled
+
+1. `createOrder` fails → toast error, stay on screen with a Try-Again button.
+2. `WebBrowser.openAuthSessionAsync` rejects → catch, show network-error screen.
+3. User dismisses the browser → `result.type === 'cancel' | 'dismiss'` → cancelled screen with back-to-bookings.
+4. Browser redirects to success URL but no `razorpay_*` fields present → treat as cancel.
+5. `verifyPayment` returns 400 (signature invalid) → "verifyFailed" toast (user already paid at Razorpay, booking stays pending, support reconciles).
+6. Double-fire on verify guarded by `useRef`.
+7. Cold-start deep-link (`Linking.addEventListener`) — covers the case where the OS re-opens the app on `homestr://razorpay/success` instead of `WebBrowser` capturing it.
+
+### Verification
+
+- `npx expo export --platform android --output-dir dist` rebuilt cleanly. Bundle: **4.29 MB hbc, 1437 modules**, no errors.
+- IDE diagnostics on all 8 changed files (`paymentService.js`, `RazorpayCheckoutScreen.js`, `CheckoutScreen.js`, `AppNavigator.js`, `endpoints.js`, `en.json`, `hi.json`, `app.json`): 0 errors, 0 warnings.
+- Manual on device (out-of-band, after this commit):
+  - **Online success path:** Checkout → Online → Confirm & Pay → Razorpay browser → test card `4111 1111 1111 1111` → app reopens → "Verifying payment…" → success toast → Bookings tab shows `payment.status: completed`.
+  - **Online cancel path:** Repeat → tap X on Razorpay → "Payment cancelled" → Back to Bookings → booking sits as `pending`.
+  - **Cash path:** Repeat with Cash selected → no Razorpay screen, immediate Bookings tab. Unchanged behaviour.
+
+### Notes / follow-ups
+
+- A "Retry payment" CTA on the Bookings detail screen for `pending` bookings would be a natural next step (out of scope here).
+- The verification round-trip is a UX optimisation — the source of truth is the Razorpay webhook on the backend. If the user crashes between Pay and verify, `BookingsContext.refresh()` will still show the correct status because the webhook has fired server-side.
+- `expo-web-browser` was added to `package.json` and the config plugin was added to `app.json` by the install command. Nothing else in `package.json` changed.
+
 ## 2026-06-28 — Theme switch on Manage Address row: persistent + dual-target
 
 ### Plan

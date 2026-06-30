@@ -35,6 +35,10 @@ export const ENDPOINTS = {
   // Profile
   updateProfile: () => `${API}/user/profile`,
 
+  // Payments
+  createOrder: () => `${API}/payments/create-order`,
+  verifyPayment: () => `${API}/payments/verify-payment`,
+
   // Notifications
   notifications: () => `${API}/notifications`,
   unreadCount: () => `${API}/notifications/unread/count`,

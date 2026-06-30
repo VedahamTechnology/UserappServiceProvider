@@ -8,6 +8,7 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -29,6 +30,14 @@ import { ScreenContainer, ScreenHeader } from '../components/layout/ScreenContai
 
 import { bookingService } from '../services/bookingService';
 import { getCurrentLocation } from '../services/locationService';
+
+/** Pull a Mongo id string from a populated object or pass a string through. */
+const pickId = (v) => {
+  if (!v) return null;
+  if (typeof v === 'string') return v;
+  if (typeof v === 'object') return v._id || v.id || null;
+  return null;
+};
 
 export default function CheckoutScreen({ route, navigation }) {
   const t = useT();
@@ -69,10 +78,12 @@ export default function CheckoutScreen({ route, navigation }) {
 
   const handleBooking = async () => {
     if (!user) {
+      Alert.alert('Login required', t('checkout.loginRequired'));
       toast.show(t('checkout.loginRequired'), 'warning');
       return;
     }
     if (!selectedAddressId) {
+      Alert.alert('Address required', t('checkout.addressRequired'));
       toast.show(t('checkout.addressRequired'), 'warning');
       return;
     }
@@ -82,15 +93,18 @@ export default function CheckoutScreen({ route, navigation }) {
       const selectedAddress = addresses.find((a) => a.id === selectedAddressId);
 
       // Resolve a vendorId — backend requires it.
+      // `mapService` exposes `vendorId` (already-resolved string) and
+      // `vendor` (raw populated object). Fall back to the legacy lookup
+      // paths for any callers still passing the unmapped service object.
       const vendorId =
-        incoming?.vendor?._id ||
-        incoming?.vendorId?._id ||
         incoming?.vendorId ||
-        incoming?.vendors?.[0]?.vendorId?._id ||
-        incoming?.vendors?.[0]?.vendorId ||
+        pickId(incoming?.vendor) ||
+        pickId(incoming?.vendors?.[0]?.vendorId) ||
+        pickId(incoming?.vendors?.[0]) ||
         null;
 
       if (!vendorId) {
+        Alert.alert('No professional', t('checkout.noProfessional'));
         toast.show(t('checkout.noProfessional'), 'error');
         setLoading(false);
         return;
@@ -125,6 +139,41 @@ export default function CheckoutScreen({ route, navigation }) {
 
       const response = await bookingService.createBooking(payload);
       if (response?.success) {
+        // Online payment — pop into the Razorpay flow. The booking is already
+        // created server-side; the Razorpay screen takes over and will land
+        // the user on the Bookings tab once verifyPayment succeeds.
+        if (paymentMethod === 'online') {
+          // Look for the new booking id in every plausible field.
+          const bookingId =
+            response.booking?._id ||
+            response.booking?.id ||
+            response.data?._id ||
+            response.data?.id ||
+            response.data?.booking?._id ||
+            response.data?.booking?.id ||
+            response._id ||
+            response.id ||
+            null;
+
+          if (!bookingId) {
+            // No id in the response — tell the user explicitly instead of
+            // silently bouncing them to Bookings.
+            toast.show(
+              'Booking created but server did not return an id. Please try again or contact support.',
+              'error',
+            );
+            return;
+          }
+
+          // Keep the spinner on while we transition into the Razorpay screen.
+          navigation.navigate('RazorpayCheckout', {
+            bookingId,
+            serviceName: service.name,
+            totalAmount,
+          });
+          return;
+        }
+
         toast.show(t('checkout.bookingSuccessMessage'), 'success');
         navigation.navigate('Main', { screen: 'Bookings' });
       } else {

@@ -9,6 +9,7 @@ import ServiceListScreen from '../screens/ServiceListScreen';
 import ServiceDetailScreen from '../screens/ServiceDetailScreen';
 import NotificationScreen from '../screens/NotificationScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
+import RazorpayCheckoutScreen from '../screens/payment/RazorpayCheckoutScreen';
 import MainTabNavigator from './MainTabNavigator';
 
 // Profile Screens
@@ -69,6 +70,11 @@ export default function AppNavigator() {
       <Stack.Screen
         name="Checkout"
         component={CheckoutScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="RazorpayCheckout"
+        component={RazorpayCheckoutScreen}
         options={{ headerShown: false }}
       />
 

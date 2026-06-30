@@ -312,6 +312,23 @@
     "emptyHint": "Browse services and add the ones you'd like to book.",
     "exploreCta": "Explore Services"
   },
+  "payment": {
+    "title": "Secure Payment",
+    "opening": "Opening secure payment...",
+    "verifying": "Verifying payment...",
+    "loading": "Connecting to Razorpay...",
+    "success": "Payment successful!",
+    "successBody": "Your booking is confirmed.",
+    "viewBooking": "View Booking",
+    "cancelled": "Payment cancelled",
+    "cancelledHint": "Your booking is saved — you can retry payment from the Bookings tab.",
+    "backToBookings": "Back to Bookings",
+    "failed": "Payment failed",
+    "failedHint": "Your money is safe. Please try again or contact support.",
+    "tryAgain": "Try Again",
+    "verifyFailed": "Payment received but we couldn't verify it automatically. Support will reconcile.",
+    "errOpenBrowser": "Could not open the payment page. Please try again."
+  },
   "about": {
     "title": "About App",
     "version": "Version {version} (Build {build})",

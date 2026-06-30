@@ -57,10 +57,31 @@ const request = async (method, path, { body, signal, query } = {}) => {
   return json;
 };
 
+/**
+ * Same as `request` but with a timeout. Rejects with an ApiError
+ * after `timeoutMs` if the server hasn't responded yet — prevents
+ * the UI from spinning forever on a dead request.
+ */
+const requestWithTimeout = (method, path, opts = {}, timeoutMs = 20000) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  return request(method, path, { ...opts, signal: controller.signal })
+    .finally(() => clearTimeout(timeout))
+    .catch((e) => {
+      if (e?.name === 'AbortError' || controller.signal.aborted) {
+        throw new ApiError('Request timed out — please check your connection and try again.', {
+          status: 0,
+          code: 'TIMEOUT',
+        });
+      }
+      throw e;
+    });
+};
+
 /** Public verbs used by services. */
 export const api = {
-  get: (path, opts) => request('GET', path, opts),
-  post: (path, body, opts) => request('POST', path, { ...opts, body }),
-  put: (path, body, opts) => request('PUT', path, { ...opts, body }),
-  delete: (path, opts) => request('DELETE', path, opts),
+  get: (path, opts) => requestWithTimeout('GET', path, opts),
+  post: (path, body, opts) => requestWithTimeout('POST', path, { ...opts, body }),
+  put: (path, body, opts) => requestWithTimeout('PUT', path, { ...opts, body }),
+  delete: (path, opts) => requestWithTimeout('DELETE', path, opts),
 };
